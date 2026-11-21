@@ -450,7 +450,7 @@ export function initializePrototype() {
     const icon = (name) => `<span class="nav-icon" aria-hidden="true">${icons[name]}</span>`
 
     const brand = $('.brand', sidebar)
-    if (brand) brand.innerHTML = `<span class="brand-mark" aria-hidden="true"><img src="/assets/abyssal-mark.svg?v=8" alt=""></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span>`
+    if (brand) brand.innerHTML = `<span class="brand-mark" aria-hidden="true"><img src="/assets/abyssal-mark.png?v=9" alt=""></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span>`
 
     const navLink = (path, label, activeClass = '') => (
       `<a class="nav-link sub${activeClass}" href="${path}">${label}</a>`

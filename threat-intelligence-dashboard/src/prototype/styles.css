@@ -5152,3 +5152,8 @@ body {
 .collector-health-table th { white-space: normal; letter-spacing: .02em; line-height: 1.35; vertical-align: bottom; }
 .collector-health-table .status-dot { white-space: normal; }
 .collector-table-surface .collector-health-table th, .page-collector-sites .site-workbench .collector-health-table th { overflow: visible; text-overflow: clip; white-space: normal; letter-spacing: .02em; line-height: 1.35; vertical-align: bottom; }
+
+/* Abyssal brand mark */
+.brand-mark, .brand-emblem, .intelligence-search-mark { border-radius: 22%; background: transparent; }
+.brand-mark img, .brand-emblem img, .intelligence-search-mark img { border-radius: 22%; object-fit: cover; }
+.signal-core .signal-core-mark { width: 68px; height: 68px; display: block; border-radius: 22%; box-shadow: 0 10px 30px color-mix(in oklch, var(--danger) 30%, transparent); }

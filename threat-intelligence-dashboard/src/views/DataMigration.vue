@@ -3,7 +3,7 @@
   <div class="app-shell sidebar-collapsed migration-shell" @click="handleNavigation">
     <aside class="app-sidebar" data-od-id="data-migration-sidebar">
       <a class="brand" href="/">
-        <span class="brand-mark" aria-hidden="true"><img src="/assets/abyssal-mark.svg?v=8" alt="" /></span>
+        <span class="brand-mark" aria-hidden="true"><img src="/assets/abyssal-mark.png?v=9" alt="" /></span>
         <span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span>
       </a>
       <nav class="sidebar-nav" aria-label="Main navigation"></nav>

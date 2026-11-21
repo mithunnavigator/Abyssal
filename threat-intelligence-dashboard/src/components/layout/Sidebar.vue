@@ -2,7 +2,7 @@
   <aside class="sidebar" :class="{ collapsed: shell.state.sidebarCollapsed }">
     <div class="sidebar__brand">
       <div class="sidebar__brand-mark">
-        <el-icon><Monitor /></el-icon>
+        <img class="sidebar__brand-logo" src="/assets/abyssal-mark.png?v=9" alt="" />
       </div>
       <div v-show="!shell.state.sidebarCollapsed" class="sidebar__brand-text">
         <strong>Abyssal Threat Intelligence Platform</strong>
@@ -402,6 +402,13 @@ onBeforeUnmount(() => {
   margin-bottom: 24px;
   padding: 10px 8px 16px;
   border-bottom: 1px solid var(--ti-border-soft);
+}
+
+.sidebar__brand-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 22%;
 }
 
 .sidebar__brand-mark {

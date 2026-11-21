@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/branding/abyssal-banner.jpg" alt="Abyssal - Dark Web Threat Intelligence Platform" width="100%"></p>
+
 # Abyssal
 
 Abyssal centrally monitors leads related to the dark web, ransomware, and code and file exposure, and supports intelligence search, evidence verification and enterprise risk notification.
