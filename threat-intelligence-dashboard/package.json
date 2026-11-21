@@ -2,6 +2,8 @@
   "name": "threat-intelligence-dashboard",
   "version": "20261112.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "Mithun Sanghavi",
   "type": "module",
   "scripts": {
     "dev": "vite",

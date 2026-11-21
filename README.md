@@ -93,3 +93,11 @@ After startup, visit [http://localhost:5174](http://localhost:5174).
 - [Public social platform lead monitoring](darkweb_collector/SOCIAL_MONITORING.md)
 - [Handling code monitoring false positives](CODE_MONITORING_FALSE_POSITIVE_PLAYBOOK.md)
 - [Changelog](CHANGELOG.md) · [Third-party licenses](THIRD_PARTY_NOTICES.md)
+
+## ⚖️ License
+
+Abyssal is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Mithun Sanghavi.
+
+Third-party components, such as Microsoft Garnet, remain under their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
