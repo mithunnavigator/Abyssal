@@ -6,6 +6,16 @@ Abyssal centrally monitors leads related to the dark web, ransomware, and code a
 
 [Download the latest release](https://github.com/mithunnavigator/Abyssal/releases/latest) · [Installation and operations](docs/USAGE.md) · [Report an issue](https://github.com/mithunnavigator/Abyssal/issues)
 
+## ⬇️ Download
+
+| Release | Platform | Download | Size |
+| --- | --- | --- | --- |
+| [v20261112.1.0](https://github.com/mithunnavigator/Abyssal/releases/tag/v20261112.1.0) (latest) | Windows x64 | [Abyssal-v20261112.1.0-windows.zip](https://github.com/mithunnavigator/Abyssal/releases/download/v20261112.1.0/Abyssal-v20261112.1.0-windows.zip) | 4.7 MB |
+
+SHA-256: `54dd85565cc7aa6eb359c86e2719e2dbeb55d337a4aca0a994bf74efa1ba1814`
+
+Linux / WSL users can clone the repository instead (see [Quick start](#-quick-start)). All versions are listed on the [Releases page](https://github.com/mithunnavigator/Abyssal/releases).
+
 ## ✨ Core features
 
 | Feature | What it does |
@@ -70,7 +80,7 @@ The following screenshots of the current interface use demo data.
 
 ### Windows
 
-1. Download the Windows ZIP package from [Releases](https://github.com/mithunnavigator/Abyssal/releases/latest) and extract it.
+1. Download [Abyssal-v20261112.1.0-windows.zip](https://github.com/mithunnavigator/Abyssal/releases/download/v20261112.1.0/Abyssal-v20261112.1.0-windows.zip) (or the latest package from [Releases](https://github.com/mithunnavigator/Abyssal/releases/latest)) and extract it.
 2. Double-click `darkweb.cmd`, choose a data drive when prompted, and wait for dependencies to install and services to start.
 3. Open [http://localhost:5174](http://localhost:5174), log in and configure monitoring targets and sources.
 
