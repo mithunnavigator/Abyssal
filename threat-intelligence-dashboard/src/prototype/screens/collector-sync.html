@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sync Center · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-collector page-collector-sync">
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="collector-sync-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation" data-od-id="collector-sync-nav"><a class="nav-link active" href="collector-sync.html">Sync Center</a></nav>
+      <div class="sidebar-footer"></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+    <div class="app-stage">
+      <header class="app-header" data-od-id="collector-sync-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="header-actions"><span class="app-version" data-od-id="collector-sync-version">Version <strong>v20260901.1.0</strong></span><button class="avatar" type="button" aria-label="Personal account" data-od-id="collector-sync-account"></button></div>
+      </header>
+
+      <main class="app-main collector-main collector-page" id="content" data-collector-surface data-needs-jobs data-od-id="collector-sync-main">
+        <section class="collector-pagebar" data-od-id="collector-sync-actions"><div class="collector-page-actions"><button class="btn btn-ghost" data-collector-action="refresh">Refresh</button></div></section>
+
+        <section class="domain-summary" data-od-id="collector-sync-summary">
+          <div><span>Connected sources</span><strong class="num">2</strong></div>
+          <div><span>Vulnerability sync</span><strong data-bind="vulnerability-status">Not started</strong></div>
+          <div><span>Last vulnerability sync</span><strong data-bind="vulnerability-last-sync">—</strong></div>
+          <div><span>Ransomware records</span><strong class="num" data-bind="ransomware-count">—</strong></div>
+          <div><span>Ransomware sources</span><strong data-bind="ransomware-source">—</strong></div>
+          <div><span>Onboarding configuration</span><strong data-bind="ransomware-configured">To be confirmed</strong></div>
+        </section>
+
+        <section class="sync-surface" data-od-id="collector-sync-pipelines">
+          <header class="ops-section-head"><div><span>Sync pipeline</span><h2>Sources, scheduling and output managed together</h2></div><small>Add a row for each new source</small></header>
+
+          <article class="sync-lane" data-od-id="collector-vulnerability-sync">
+            <div class="sync-source"><span class="source-monogram">V</span><div><strong>Public-source vulnerability</strong><small>Normalized vulnerability events</small></div><span class="badge" data-bind="vulnerability-status">Not started</span></div>
+            <div class="sync-facts"><span>Limit per run<strong class="num">300</strong></span><span>Last sync<strong data-bind="vulnerability-last-sync">—</strong></span></div>
+            <div class="sync-controls"><select id="vulnerability-interval" aria-label="Vulnerability sync interval"><option value="1">Every 1 hour</option><option value="3">Every 3 hours</option><option value="6">Every 6 hours</option><option value="12">Every 12 hours</option><option value="24">Every 24 hours</option></select><button class="btn btn-ghost" data-collector-action="vulnerability-run">Sync once</button><button class="btn btn-primary" data-collector-action="vulnerability-start">Auto-sync</button><button class="btn btn-ghost" data-collector-action="vulnerability-stop">Stop</button></div>
+          </article>
+
+          <article class="sync-lane" data-od-id="collector-ransomware-sync">
+            <div class="sync-source"><span class="source-monogram danger">R</span><div><strong>ransomware.live</strong><small>Ransomware disclosure and group data</small></div><span class="badge" data-bind="ransomware-configured">To be confirmed</span></div>
+            <div class="sync-facts"><span>Sync records<strong class="num" data-bind="ransomware-count">—</strong></span><span>Latest source<strong data-bind="ransomware-source">—</strong></span></div>
+            <div class="sync-controls sync-controls-secret"><input id="ransomware-key" type="password" placeholder="Updated API Key" aria-label="ransomware.live API Key" autocomplete="new-password"><button class="btn btn-secondary" data-collector-action="ransomware-save">Save</button><select id="ransomware-interval" aria-label="Ransomware sync interval"><option value="1">Every 1 hour</option><option value="3">Every 3 hours</option><option value="6">Every 6 hours</option><option value="12">Every 12 hours</option></select><button class="btn btn-ghost" data-collector-action="ransomware-run">Sync once</button><button class="btn btn-primary" data-collector-action="ransomware-start">Auto-sync</button><button class="btn btn-ghost" data-collector-action="ransomware-stop">Stop</button></div>
+          </article>
+
+          <footer class="sync-foot"><span>Bot Push and monitoring keywords have moved to the Configuration Center to keep runtime operations separate from persistent configuration.</span><a href="settings.html">Open keywords and notifications →</a></footer>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

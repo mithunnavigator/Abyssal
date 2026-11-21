@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vulnerability Alerts · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-vulnerability page-vulnerability-intel">
+<div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="vulnerability-sidebar"><a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a><nav class="sidebar-nav" aria-label="Main navigation"></nav><div class="sidebar-footer"></div></aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+    <div class="app-stage">
+      <header class="app-header" data-od-id="vulnerability-header"><button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation">☰</button><div class="header-actions"><span class="app-version" data-od-id="vulnerability-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="vulnerability-account">Personal</span></div></header>
+
+      <main class="app-main" id="content" data-od-id="vulnerability-main">
+        <section class="section" data-od-id="vulnerability-action-section"><div class="page-titlebar module-actions-bar"><div class="page-actions"><button class="btn btn-secondary">Today</button><button class="btn btn-primary">Last 7 days</button><button class="btn btn-secondary">Last 30 days</button></div></div></section>
+
+        <section class="vuln-intel-kpis" data-od-id="vulnerability-kpis">
+          <article><span>New vulnerabilities</span><strong data-count="12">0</strong><small>Public-source disclosure</small><i class="spark spark-blue"></i></article>
+          <article><span>Severity level</span><strong data-count="5">0</strong><small>CVSS ≥ 9.0</small><i class="spark spark-red"></i></article>
+          <article><span>Exploitation confirmed</span><strong data-count="5">0</strong><small>In-the-wild exploitation signals</small><i class="spark spark-orange"></i></article>
+          <article><span>Patch available</span><strong data-count="9">0</strong><small>Released by vendor</small><i class="spark spark-green"></i></article>
+        </section>
+
+        <section class="vuln-chart-grid" data-od-id="vulnerability-chart-overview">
+          <article class="card vuln-trend-card dense-panel" data-od-id="vulnerability-disclosure-trend">
+            <div class="panel-header"><div><h2>Critical vulnerability disclosure trend</h2><span class="meta">Last 7 days</span></div><div class="trend-summary"><strong>42</strong><span>Total disclosed</span></div></div>
+            <svg class="vuln-trend-chart" viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label="Critical vulnerability disclosure trend over the last seven days"><defs><linearGradient id="vulnArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".24"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><g class="chart-gridlines"><path d="M34 35H700M34 85H700M34 135H700M34 185H700"/></g><path class="vuln-area-path" d="M34 176 L145 151 L256 162 L367 108 L478 122 L589 70 L700 45 L700 205 L34 205Z"/><path class="vuln-line-path" d="M34 176 L145 151 L256 162 L367 108 L478 122 L589 70 L700 45"/><g class="vuln-points"><circle cx="34" cy="176" r="4"/><circle cx="145" cy="151" r="4"/><circle cx="256" cy="162" r="4"/><circle cx="367" cy="108" r="4"/><circle cx="478" cy="122" r="4"/><circle cx="589" cy="70" r="4"/><circle cx="700" cy="45" r="4"/></g><g class="vuln-chart-values" aria-hidden="true"><text/><text/><text/><text/><text/><text/><text/></g><g class="chart-labels"><text x="34" y="224">03-04</text><text x="145" y="224">03-05</text><text x="256" y="224">03-06</text><text x="367" y="224">03-07</text><text x="478" y="224">03-08</text><text x="589" y="224">03-09</text><text x="700" y="224">03-10</text></g></svg>
+          </article>
+
+          <article class="card severity-donut-card dense-panel" data-od-id="vulnerability-severity-distribution">
+            <div class="panel-header"><h2>Severity level distribution</h2><span class="meta">12 records</span></div>
+            <div class="severity-donut-wrap"><div class="severity-donut"><span><strong>12</strong><small>Vulnerability</small></span></div><div class="severity-legend"><div><i class="sev-critical"></i><span>Critical</span><b>5</b></div><div><i class="sev-high"></i><span>High</span><b>4</b></div><div><i class="sev-medium"></i><span>Medium</span><b>2</b></div><div><i class="sev-low"></i><span>Low</span><b>1</b></div></div></div>
+          </article>
+
+          <article class="card industry-map-card dense-panel" data-od-id="vulnerability-industry-distribution">
+            <div class="panel-header"><h2>Related industry distribution</h2><span class="meta">Affected scenarios</span></div>
+            <div class="industry-treemap"><button class="industry-block industry-manufacturing" data-toast="26 vulnerabilities related to manufacturing"><strong>Manufacturing</strong><span>26</span></button><button class="industry-block industry-finance" data-toast="22 vulnerabilities related to finance"><strong>Finance</strong><span>22</span></button><button class="industry-block industry-government" data-toast="18 vulnerabilities related to government"><strong>Government</strong><span>18</span></button><button class="industry-block industry-energy" data-toast="16 vulnerabilities related to energy"><strong>Energy</strong><span>16</span></button><button class="industry-block industry-health" data-toast="12 vulnerabilities related to healthcare"><strong>Healthcare</strong><span>12</span></button></div>
+          </article>
+        </section>
+
+        <section class="vuln-insight-grid" data-od-id="vulnerability-insight-grid">
+          <article class="card vendor-chart-card dense-panel" data-od-id="vulnerability-vendor-ranking"><div class="panel-header"><h2>Frequently affected vendors</h2><span class="meta">TOP 5</span></div><div class="vendor-bars"><div><span>Palo Alto</span><i><b style="--value:100%"></b></i><strong>3</strong></div><div><span>Ivanti</span><i><b style="--value:72%"></b></i><strong>2</strong></div><div><span>Fortinet</span><i><b style="--value:68%"></b></i><strong>2</strong></div><div><span>Apache</span><i><b style="--value:64%"></b></i><strong>2</strong></div><div><span>Oracle</span><i><b style="--value:38%"></b></i><strong>1</strong></div></div></article>
+
+          <article class="card product-cluster-card dense-panel" data-od-id="vulnerability-product-cluster"><div class="panel-header"><h2>Affected product clusters</h2><span class="meta">By product type</span></div><div class="product-cluster"><button class="product-bubble edge" data-toast="8 edge device vulnerabilities"><strong>Edge devices</strong><span>8</span></button><button class="product-bubble middleware" data-toast="6 middleware vulnerabilities"><strong>Middleware</strong><span>6</span></button><button class="product-bubble identity" data-toast="4 identity system vulnerabilities"><strong>Identity systems</strong><span>4</span></button><button class="product-bubble cloud" data-toast="3 cloud component vulnerabilities"><strong>Cloud components</strong><span>3</span></button><button class="product-bubble office" data-toast="2 office component vulnerabilities"><strong>Office components</strong><span>2</span></button></div></article>
+
+          <article class="card exploit-signal-card dense-panel" data-od-id="vulnerability-exploit-signals"><div class="panel-header"><h2>Exploitation signal sources</h2><span class="meta">Last 7 days</span></div><div class="signal-rings"><div class="signal-ring ring-kev"><span><strong>5</strong><small>Exploited</small></span></div><div class="signal-ring ring-poc"><span><strong>7</strong><small>PoC</small></span></div><div class="signal-source-list"><div><i></i><span>Authoritative catalog</span><b>5</b></div><div><i></i><span>Security advisory</span><b>4</b></div><div><i></i><span>Public PoC</span><b>7</b></div></div></div></article>
+        </section>
+
+        <section data-od-id="vulnerability-list">
+          <article class="card data-table-panel dense-panel"><div class="panel-header"><h2>Public-source critical vulnerabilities <span class="heading-count" data-table-count="vulnerability-table">5</span></h2><button class="btn btn-secondary" data-toast="Current list exported">Export</button></div><div class="toolbar"><div class="tabs compact-tabs" data-target="vulnerability-table"><button class="tab active" data-tab="all">All</button><button class="tab" data-tab="critical">Critical</button><button class="tab" data-tab="high">High</button></div><select class="select" data-filter-target="vulnerability-table" data-filter-key="industry"><option value="">All industries</option><option value="Manufacturing">Manufacturing</option><option value="Finance">Finance</option><option value="Government">Government</option><option value="Energy">Energy</option></select><div class="search-field"><input class="input" data-table-search="vulnerability-table" placeholder="Search CVEs, vendors, products or industries"></div></div><div class="table-wrap"><table class="ds-table" id="vulnerability-table" data-table><thead><tr><th>Disclosure time</th><th>CVE / Vulnerability</th><th>Vendor / Product</th><th>Related industry</th><th>CVSS</th><th>Exploitation status</th><th>Patch</th><th>View</th></tr></thead><tbody>
+            <tr data-category="critical" data-industry="Manufacturing"><td class="num">03-10 09:31</td><td class="table-title">CVE-2026-24001<span>GlobalProtect Unauthenticated command execution</span></td><td>Palo Alto / PAN-OS</td><td><span class="industry-tag">Manufacturing</span></td><td class="num risk-score">10.0</td><td><span class="badge badge-critical vuln-signal vuln-signal--exploited">Exploited</span></td><td><span class="badge badge-success vuln-signal vuln-signal--released">Published</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-24001">Details</a></td></tr>
+            <tr data-category="high" data-industry="Finance"><td class="num">03-10 08:54</td><td class="table-title">CVE-2026-18113<span>Tomcat Request smuggling</span></td><td>Apache / Tomcat</td><td><span class="industry-tag">Finance</span></td><td class="num">8.8</td><td><span class="badge vuln-signal vuln-signal--watch">To be observed</span></td><td><span class="badge badge-success vuln-signal vuln-signal--released">Published</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-18113">Details</a></td></tr>
+            <tr data-category="critical" data-industry="Government"><td class="num">03-10 08:07</td><td class="table-title">CVE-2026-17420<span>Connect Secure Authentication bypass</span></td><td>Ivanti / Connect Secure</td><td><span class="industry-tag">Government</span></td><td class="num risk-score">9.1</td><td><span class="badge badge-critical vuln-signal vuln-signal--exploited">Exploited</span></td><td><span class="badge badge-success vuln-signal vuln-signal--released">Published</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-17420">Details</a></td></tr>
+            <tr data-category="critical" data-industry="Finance"><td class="num">03-10 07:22</td><td class="table-title">CVE-2026-20884<span>WebLogic Deserialization</span></td><td>Oracle / WebLogic</td><td><span class="industry-tag">Finance</span></td><td class="num risk-score">9.8</td><td><span class="badge vuln-signal vuln-signal--poc">PoC Available</span></td><td><span class="badge badge-success vuln-signal vuln-signal--released">Published</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-20884">Details</a></td></tr>
+            <tr data-category="high" data-industry="Energy"><td class="num">03-10 06:41</td><td class="table-title">CVE-2026-21101<span>FortiManager Arbitrary file write</span></td><td>Fortinet / FortiManager</td><td><span class="industry-tag">Energy</span></td><td class="num">8.7</td><td><span class="badge badge-critical vuln-signal vuln-signal--exploited">Exploited</span></td><td><span class="badge badge-high vuln-signal vuln-signal--mitigation">Mitigations</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-21101">Details</a></td></tr>
+          </tbody></table></div><div class="empty-state" data-table-empty="vulnerability-table">No matching vulnerabilities</div></article>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div><script src="app.js"></script>
+</body>
+</html>

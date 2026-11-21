@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Threat Intelligence · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-intelligence-search">
+  <a class="skip-link" href="#content">Skip to main content</a>
+<div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="intelligence-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation" data-od-id="intelligence-nav">
+        <div class="nav-label">Workspace</div>
+        <a class="nav-link" href="dashboard.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Security workbench</a>
+        <a class="nav-link active" href="intelligence.html" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Threat Intelligence</a>
+        <a class="nav-link sub active" href="intelligence.html">Event search</a>
+        <a class="nav-link sub" href="#situation">Situation and reports</a>
+        <a class="nav-link" href="monitoring.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v12H4zM8 21h8M12 17v4"/></svg>Exposure Monitoring</a>
+        <a class="nav-link" href="collector-sites.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M7 4v6M17 4v6M5 12h14v8H5z"/></svg>Collection Operations</a>
+        <div class="nav-label">Management</div>
+        <a class="nav-link" href="settings.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.4 6A8 8 0 0 0 8 7.1l-2.4-1-2 3.4L5.7 11a7 7 0 0 0 0 2L3.6 14.5l2 3.4 2.4-1A8 8 0 0 0 10.4 18l.3 2.6h4L15 18a8 8 0 0 0 1.6-1.1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z"/></svg>Configuration Center</a>
+      </nav>
+      <div class="sidebar-footer"><div class="coverage"><strong>Auto-refresh</strong><span>List state kept · refreshes every 15 seconds</span></div></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+
+    <div class="app-stage">
+      <header class="app-header" data-od-id="intelligence-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="header-actions"><span class="app-version" data-od-id="intelligence-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="intelligence-account">Personal</span></div>
+      </header>
+
+      <main class="app-main intelligence-search-main" id="content" data-od-id="intelligence-main">
+        <section class="intelligence-search-stage" data-od-id="intelligence-search-stage">
+          <div class="intelligence-search-mark" data-od-id="intelligence-brand-mark"><img src="assets/abyssal-mark.svg?v=8" alt="Abyssal detection platform"></div>
+          <h1 data-od-id="intelligence-search-title">Global intelligence search</h1>
+          <div class="intelligence-search-row">
+            <form class="intelligence-search-form" data-intel-search-form role="search">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+              <input id="intel-search-query" type="search" data-table-search="intel-results" aria-label="Search threat intelligence" placeholder="Search organizations, groups, CVEs, domains, IPs or products">
+              <button type="submit" data-od-id="intelligence-search-submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+            </form>
+          </div>
+        </section>
+
+        <section class="intelligence-results" data-od-id="intelligence-results-section">
+          <article class="intel-results-shell" data-od-id="intelligence-results-surface">
+            <header class="intel-results-head">
+              <div class="intel-results-title"><strong>Latest intelligence</strong><span>Updated continuously from public disclosures</span></div>
+              <div class="intel-result-tabs tabs" data-target="intel-results" role="tablist" aria-label="Intelligence type">
+                <button class="tab active" data-tab="all" role="tab" aria-selected="true">All <b class="num" data-table-count="intel-results">7</b></button>
+                <button class="tab" data-tab="ransomware" role="tab" aria-selected="false">Ransomware <b class="num">3</b></button>
+                <button class="tab" data-tab="data-leak" role="tab" aria-selected="false">Data leak <b class="num">2</b></button>
+                <button class="tab" data-tab="vulnerability" role="tab" aria-selected="false">Vulnerability <b class="num">2</b></button>
+              </div>
+              <label class="intel-sort-label">Sort<select class="select" data-intel-sort aria-label="Sort results"><option value="latest">Report time, newest first</option><option value="oldest">Report time, oldest first</option><option value="severity">Risk level first</option></select></label>
+            </header>
+
+            <div class="intel-result-list" id="intel-results" data-table data-server-pagination="true" data-active-tab="all">
+              <article class="intel-result-item" data-table-row data-category="vulnerability" data-severity="critical" data-industry="Edge devices" data-status="exploited" data-date="202603100931" data-severity-rank="3" data-od-id="intel-result-pan-os">
+                <div class="intel-result-thumb thumb-vulnerability" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="7" y="6" width="10" height="13" rx="4"/><path d="M9 6V4m6 2V4M4 10h3m10 0h3M4 15h3m10 0h3M9 12h6m-6 3h6"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T09:31">2026/03/10 09:31</time><span>Just updated</span><span class="badge badge-critical">Exploited</span><span class="badge">Vulnerability alerts</span></div><h2><a href="vulnerability-detail.html?id=CVE-2026-24001">Palo Alto PAN-OS GlobalProtect Gateway unauthenticated command execution</a></h2><p>Public exploitation signals point to GlobalProtect gateways; check internet exposure, device versions and traces of abnormal command execution first.</p><div class="intel-result-context"><strong>Palo Alto Networks</strong><span>CVE-2026-24001</span><span>Edge devices</span><span>Remote code execution</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="data-leak" data-severity="critical" data-industry="E-commerce" data-status="verify" data-date="202603100926" data-severity-rank="3" data-od-id="intel-result-commerce-leak">
+                <div class="intel-result-thumb thumb-leak" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T09:26">2026/03/10 09:26</time><span>5  min ago</span><span class="badge badge-critical">Critical</span><span class="badge badge-high">Verifying</span></div><h2><a href="data-leak-detail.html?id=LEAK-2026-0310-008">Order and contact samples of a cross-border e-commerce company’s customers are being sold on a forum</a></h2><p>The sale post claims to include orders, contacts and delivery information; sample fields, time range and customer ownership currently need cross-verification.</p><div class="intel-result-context"><strong>Forum Seller 17</strong><span>Customer data</span><span>E-commerce</span><span>United States / United Kingdom</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="ransomware" data-severity="critical" data-industry="Manufacturing" data-status="tracking" data-date="202603100912" data-severity-rank="3" data-od-id="intel-result-lockbit-manufacturer">
+                <div class="intel-result-thumb thumb-ransomware" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6.5 3.5h7l4 4V20h-11Z"/><path d="M13.5 3.5V8h4"/><rect x="9" y="12" width="6.5" height="5.5" rx="1.2"/><path d="M10.6 12v-1a1.65 1.65 0 0 1 3.3 0v1M12.25 14.2v1.2"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T09:12">2026/03/10 09:12</time><span>19  min ago</span><span class="badge badge-critical">Critical</span><span class="badge badge-high">Pending assessment</span></div><h2><a href="ransomware-detail.html?id=RAN-2026-0310-014">LockBit announced disclosure of financial and engineering documents of a North American manufacturer</a></h2><p>The group’s leak site added a victim organization entry and claims to hold financial, contract and engineering materials; confirm the organization’s identity and the disclosure countdown.</p><div class="intel-result-context"><strong>LockBit</strong><span>Double extortion</span><span>Manufacturing</span><span>United States / Canada</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="data-leak" data-severity="high" data-industry="Finance SaaS" data-status="verify" data-date="202603100858" data-severity-rank="2" data-od-id="intel-result-finance-credentials">
+                <div class="intel-result-thumb thumb-leak" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T08:58">2026/03/10 08:58</time><span>33  min ago</span><span class="badge badge-high">High</span><span class="badge">Data leak</span></div><h2><a href="data-leak-detail.html?id=LEAK-2026-0310-011">Financial SaaS back-office credential bundle entered secondary distribution channels</a></h2><p>Back-office account combinations appeared in a credential broker channel; assess the actual impact using login entry points, password reuse and recent abnormal sessions.</p><div class="intel-result-context"><strong>Broker-X</strong><span>Credential leak</span><span>Finance SaaS</span><span>United States</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="vulnerability" data-severity="high" data-industry="Middleware" data-status="new" data-date="202603100854" data-severity-rank="2" data-od-id="intel-result-tomcat-smuggling">
+                <div class="intel-result-thumb thumb-vulnerability" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="7" y="6" width="10" height="13" rx="4"/><path d="M9 6V4m6 2V4M4 10h3m10 0h3M4 15h3m10 0h3M9 12h6m-6 3h6"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T08:54">2026/03/10 08:54</time><span>37  min ago</span><span class="badge badge-high">High</span><span class="badge">PoC Public</span></div><h2><a href="vulnerability-detail.html?id=CVE-2026-18113">Apache Tomcat Reverse proxy chain request smuggling vulnerability</a></h2><p>Affected deployments may produce request boundary parsing differences in proxy chains; check front proxies, connection reuse and patch status.</p><div class="intel-result-context"><strong>Apache Tomcat</strong><span>CVE-2026-18113</span><span>Middleware</span><span>Request smuggling</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="ransomware" data-severity="high" data-industry="Healthcare" data-status="tracking" data-date="202603100844" data-severity-rank="2" data-od-id="intel-result-black-basta-healthcare">
+                <div class="intel-result-thumb thumb-ransomware" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6.5 3.5h7l4 4V20h-11Z"/><path d="M13.5 3.5V8h4"/><rect x="9" y="12" width="6.5" height="5.5" rx="1.2"/><path d="M10.6 12v-1a1.65 1.65 0 0 1 3.3 0v1M12.25 14.2v1.2"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T08:44">2026/03/10 08:44</time><span>47  min ago</span><span class="badge badge-high">High</span><span class="badge badge-critical">Tracking</span></div><h2><a href="ransomware-detail.html?id=RAN-2026-0310-012">Black Basta claimed to have breached a European healthcare group and started a negotiation countdown</a></h2><p>The group has published the victim organization’s name and started a countdown; current focus is on leak samples, healthcare business continuity and changes to related infrastructure.</p><div class="intel-result-context"><strong>Black Basta</strong><span>Ransom negotiation</span><span>Healthcare</span><span>Germany / Poland</span></div></div>
+              </article>
+              <article class="intel-result-item" data-table-row data-category="ransomware" data-severity="medium" data-industry="Manufacturing" data-status="new" data-date="202603100735" data-severity-rank="1" data-od-id="intel-result-play-asia">
+                <div class="intel-result-thumb thumb-ransomware" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6.5 3.5h7l4 4V20h-11Z"/><path d="M13.5 3.5V8h4"/><rect x="9" y="12" width="6.5" height="5.5" rx="1.2"/><path d="M10.6 12v-1a1.65 1.65 0 0 1 3.3 0v1M12.25 14.2v1.2"/></svg></div>
+                <div class="intel-result-copy"><div class="intel-result-meta"><time class="num" datetime="2026-03-10T07:35">2026/03/10 07:35</time><span>1  h ago</span><span class="badge badge-medium">Medium</span><span class="badge">Newly discovered</span></div><h2><a href="ransomware-detail.html?id=RAN-2026-0310-009">Play group added disclosures of Southeast Asian manufacturing victims</a></h2><p>The leak site added names of manufacturing organizations in Vietnam and Thailand; the company entities, site publish times and whether verifiable samples exist still need to be confirmed.</p><div class="intel-result-context"><strong>Play</strong><span>Site disclosure</span><span>Manufacturing</span><span>Vietnam / Thailand</span></div></div>
+              </article>
+            </div>
+            <div class="intel-empty-state" data-table-empty="intel-results">No intelligence matches the current conditions; try clearing filters or changing keywords.</div>
+            <footer class="intel-results-foot"><span>Total <b class="num" data-intel-total>7</b>  historical intelligence records</span><span>Search, categories, sorting and pagination all cover the complete database</span></footer>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Threat Intelligence Overview · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-situation page-dashboard">
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="dashboard-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><img src="assets/abyssal-mark.svg?v=8" alt=""></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation"></nav>
+      <div class="sidebar-footer"></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+
+    <div class="app-stage">
+      <header class="app-header" data-od-id="dashboard-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="header-actions"><span class="app-version" data-od-id="dashboard-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="dashboard-account">Personal</span></div>
+      </header>
+
+      <main class="app-main" id="content" data-od-id="dashboard-main">
+        <section class="situation-heading module-actions-bar" data-od-id="dashboard-range-controls">
+          <div class="tabs situation-range" aria-label="Statistics period"><button class="tab" data-tab="today" aria-selected="false">Today</button><button class="tab active" data-tab="7d" aria-selected="true">Last 7 days</button><button class="tab" data-tab="30d" aria-selected="false">Last 30 days</button></div>
+        </section>
+
+        <div class="dashboard-board situation-board">
+          <section class="card situation-status-strip" data-od-id="dashboard-status-strip">
+            <div><span class="live-pulse"></span><strong>Intelligence flow normal</strong><small>Multi-source signals continuously aggregating</small></div>
+            <div><span>Monitored regions</span><strong class="num">6</strong></div>
+            <div><span>Key industries</span><strong class="num">8</strong></div>
+            <div><span>Leads pending assessment</span><strong class="num">19</strong></div>
+            <button class="btn btn-ghost" data-toast="Overview data refreshed">Refresh overview</button>
+          </section>
+
+          <section class="situation-kpi-grid" data-od-id="dashboard-threat-metrics">
+            <article class="card situation-kpi dense-panel" data-od-id="dashboard-kpi-leak"><div class="situation-kpi-head"><span>Leak events</span><b class="risk-rise">Rising steadily</b></div><strong class="num" data-count="31">0</strong><svg class="situation-spark" viewBox="0 0 120 28" aria-hidden="true"><path d="M2 24 18 22 34 23 50 17 66 18 82 12 98 13 118 5"/></svg></article>
+            <article class="card situation-kpi dense-panel" data-od-id="dashboard-kpi-ransomware"><div class="situation-kpi-head"><span>Ransomware victims</span><b class="risk-critical">Running high</b></div><strong class="num" data-count="42">0</strong><svg class="situation-spark critical" viewBox="0 0 120 28" aria-hidden="true"><path d="M2 21 18 18 34 20 50 13 66 9 82 12 98 6 118 8"/></svg></article>
+            <article class="card situation-kpi dense-panel" data-od-id="dashboard-kpi-vulnerability"><div class="situation-kpi-head"><span>Vulnerability alerts</span><b class="risk-critical">5 exploited</b></div><strong class="num" data-count="12">0</strong><svg class="situation-spark warning" viewBox="0 0 120 28" aria-hidden="true"><path d="M2 20 18 21 34 15 50 18 66 10 82 14 98 9 118 4"/></svg></article>
+            <article class="card situation-kpi dense-panel" data-od-id="dashboard-kpi-alert"><div class="situation-kpi-head"><span>Critical alerts</span><b class="risk-rise">Awaiting priority assessment</b></div><strong class="num" data-count="19">0</strong><svg class="situation-spark accent" viewBox="0 0 120 28" aria-hidden="true"><path d="M2 23 18 17 34 18 50 12 66 15 82 8 98 10 118 6"/></svg></article>
+          </section>
+
+          <section class="situation-live-grid" data-od-id="dashboard-live-overview">
+            <article class="card situation-map-card dense-panel" data-od-id="dashboard-threat-map">
+              <div class="panel-header"><div><span class="panel-kicker">Live signal map</span><h2>Global threat activity</h2></div><span class="situation-live-label"><i></i><span>Live summary</span></span></div>
+              <div class="situation-map-layout">
+                <div class="world-grid situation-world" role="img" aria-label="Global distribution of key threat activity">
+                  <img class="situation-world-map" src="assets/world-map.svg" alt="" aria-hidden="true">
+                  <i class="situation-route route-one"></i><i class="situation-route route-two"></i><i class="situation-route route-three"></i>
+                  <span class="map-point us"></span><span class="map-point de"></span><span class="map-point in"></span><span class="map-point jp"></span><span class="map-point br"></span>
+                  <span class="situation-map-label label-us">North America · 84</span><span class="situation-map-label label-de">Western Europe · 72</span><span class="situation-map-label label-in">South Asia · 61</span><span class="situation-map-label label-jp">East Asia · 69</span><span class="situation-map-label label-br">Latin America · 47</span>
+                </div>
+                <div class="situation-region-rank">
+                  <div class="region-rank-head"><span>Region</span><span>Risk index</span></div>
+                  <div class="compact-bar"><span>North America</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:100%"></i></div><b>84</b></div><div class="compact-bar"><span>Western Europe</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:86%"></i></div><b>72</b></div><div class="compact-bar"><span>East Asia</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:82%"></i></div><b>69</b></div><div class="compact-bar"><span>South Asia</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:73%"></i></div><b>61</b></div><div class="compact-bar"><span>Southeast Asia</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:69%"></i></div><b>58</b></div><div class="compact-bar"><span>Latin America</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:56%"></i></div><b>47</b></div>
+                </div>
+              </div>
+              <div class="situation-map-foot"><span><i class="critical"></i> Critical activity</span><span><i class="high"></i> High-risk regions</span><span><i class="watch"></i> Under observation</span><b>Composite risk index <strong class="num">78</strong></b></div>
+            </article>
+
+            <article class="card situation-watch-card dense-panel" data-od-id="dashboard-watch-queue">
+              <div class="panel-header"><div><span class="panel-kicker">Analysis queue</span><h2>Current focus</h2></div><span class="badge badge-critical">4</span></div>
+              <div class="situation-watch-list">
+                <a href="vulnerability-detail.html?id=CVE-2026-24001" data-od-id="dashboard-watch-vulnerability"><span class="watch-kind critical">Vulnerability</span><div><strong>Real exploitation activity for edge device vulnerabilities</strong><small>Global · Remote access entry points · Verify first</small></div><b>Critical</b></a>
+                <a href="ransomware-detail.html?id=RAN-2026-0310-014" data-od-id="dashboard-watch-ransomware"><span class="watch-kind critical">Ransomware</span><div><strong>Manufacturing victim footprint keeps growing</strong><small>North America / Western Europe · LockBit · Tracking</small></div><b>Critical</b></a>
+                <a href="data-leak-detail.html?id=LEAK-2026-0310-008" data-od-id="dashboard-watch-data-leak"><span class="watch-kind high">Leak</span><div><strong>More leads selling credentials and customer data</strong><small>E-commerce · Evidence pending verification</small></div><b>High</b></a>
+                <a href="intelligence.html" data-od-id="dashboard-watch-region"><span class="watch-kind watch">Region</span><div><strong>Western Europe risk index nearing the warning threshold</strong><small>Vulnerability exploitation and ransomware activity overlapping</small></div><b>Watch</b></a>
+              </div>
+              <a class="situation-queue-link" href="intelligence.html">Enter intelligence assessment queue <span>→</span></a>
+            </article>
+          </section>
+
+          <section class="situation-analysis-grid" data-od-id="dashboard-threat-analysis">
+            <article class="card situation-trend-card dense-panel" data-od-id="dashboard-threat-trend">
+              <div class="panel-header"><div><span class="panel-kicker">Risk trend</span><h2>Threat level trend</h2></div><div class="chart-legend"><span><i class="critical"></i>High</span><span><i class="total"></i>All</span></div></div>
+              <div class="trend-summary"><div><span>High</span><strong class="num">32</strong></div><div><span>Medium</span><strong class="num">46</strong></div><div><span>Low</span><strong class="num">21</strong></div></div>
+              <svg class="situation-trend-chart" viewBox="0 0 620 164" preserveAspectRatio="none" role="img" aria-label="Threat level trend over the last seven periods"><g class="trend-grid"><line x1="36" y1="28" x2="602" y2="28"/><line x1="36" y1="72" x2="602" y2="72"/><line x1="36" y1="116" x2="602" y2="116"/><line x1="36" y1="160" x2="602" y2="160"/></g><path class="trend-area" d="M36 138 C96 128 126 132 176 111 S260 104 316 90 410 73 454 63 544 46 602 34 L602 160 L36 160Z"/><path class="trend-line total" d="M36 116 C96 103 126 107 176 91 S260 84 316 71 410 61 454 48 544 38 602 30"/><path class="trend-line critical" d="M36 138 C96 128 126 132 176 111 S260 104 316 90 410 73 454 63 544 46 602 34"/></svg>
+              <div class="trend-axis-labels" aria-hidden="true"><span>03-04</span><span>03-05</span><span>03-06</span><span>03-07</span><span>03-08</span><span>03-09</span><span>03-10</span></div>
+            </article>
+            <article class="card situation-vector-card situation-donut-card dense-panel" data-od-id="dashboard-intel-distribution">
+              <div class="panel-header"><div><span class="panel-kicker">Intelligence composition</span><h2>Intelligence type distribution</h2></div><span class="meta">Last 24 hours</span></div>
+              <div class="situation-donut-layout">
+                <div class="donut-chart situation-donut" role="img" aria-label="Intelligence type distribution: ransomware 42, data leaks 31, vulnerability alerts 12, other leads 41"><div class="donut-core"><strong class="num" data-count="126">0</strong><span>Key events</span></div></div>
+                <div class="donut-legend situation-donut-legend">
+                  <div class="legend-item"><i></i><span>Ransomware intelligence</span><b>42</b></div>
+                  <div class="legend-item"><i></i><span>Data leak</span><b>31</b></div>
+                  <div class="legend-item"><i></i><span>Vulnerability alerts</span><b>12</b></div>
+                  <div class="legend-item"><i></i><span>Other leads</span><b>41</b></div>
+                </div>
+              </div>
+            </article>
+            <article class="card situation-industry-card dense-panel" data-od-id="dashboard-industry-heat"><div class="panel-header"><div><span class="panel-kicker">Industry exposure</span><h2>Industry risk heat</h2></div><span class="meta">Composite score</span></div><div class="industry-heat-list"><div><b>01</b><span><strong>Manufacturing</strong><small>Ransomware and supply chain risk combined</small></span><em>78</em></div><div><b>02</b><span><strong>Finance</strong><small>Credential leak leads active</small></span><em>64</em></div><div><b>03</b><span><strong>Healthcare</strong><small>External service exposure fairly concentrated</small></span><em>57</em></div><div><b>04</b><span><strong>E-commerce</strong><small>More leads selling customer data</small></span><em>48</em></div></div></article>
+          </section>
+
+          <section data-od-id="dashboard-priority-events">
+            <article class="card data-table-panel situation-events-card dense-panel">
+              <div class="panel-header"><div><span class="panel-kicker">Key events</span><h2>Key events <small>Currently showing <b data-table-count="dashboard-events-table">5</b> records</small></h2></div><button class="btn btn-secondary" data-toast="Key event added to report">Add to report</button></div>
+              <div class="toolbar situation-table-toolbar"><div class="tabs" data-target="dashboard-events-table" aria-label="Event type filter"><button class="tab active" data-tab="all" aria-selected="true">All</button><button class="tab" data-tab="vulnerability" aria-selected="false">Vulnerability</button><button class="tab" data-tab="ransomware" aria-selected="false">Ransomware</button><button class="tab" data-tab="leak" aria-selected="false">Leak</button></div><select class="select" data-filter-target="dashboard-events-table" data-filter-key="severity" aria-label="Risk level filter"><option value="">All levels</option><option value="critical">Critical</option><option value="high">High</option></select><div class="search-field"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input class="input" data-table-search="dashboard-events-table" placeholder="Search events, regions or industries" aria-label="Search key events"></div></div>
+              <div class="table-wrap"><table class="ds-table situation-events-table" id="dashboard-events-table" data-table data-active-tab="all"><thead><tr><th>Time</th><th>Event</th><th>Type</th><th>Region</th><th>Industry / Asset</th><th>Level</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+                <tr data-category="vulnerability" data-severity="critical"><td class="num">03-10 09:31</td><td class="table-title">Exploitation activity for critical edge device vulnerabilities<span>Palo Alto / Ivanti</span></td><td>Vulnerability alerts</td><td>Global</td><td>Edge devices</td><td><span class="badge badge-critical">Critical</span></td><td><span class="status-dot warning">Pending assessment</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-24001">Details</a></td></tr>
+                <tr data-category="ransomware" data-severity="critical"><td class="num">03-10 09:18</td><td class="table-title">LockBit New manufacturing victims<span>United States, Germany, Poland</span></td><td>Ransomware intelligence</td><td>North America / Western Europe</td><td>Manufacturing</td><td><span class="badge badge-critical">Critical</span></td><td><span class="status-dot info">Tracking</span></td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-014">Details</a></td></tr>
+                <tr data-category="leak" data-severity="high"><td class="num">03-10 08:46</td><td class="table-title">E-commerce customer data sale lead<span>Entered manual verification pool</span></td><td>Data leak</td><td>North America</td><td>E-commerce</td><td><span class="badge badge-high">High</span></td><td><span class="status-dot warning">Verifying</span></td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-008">Details</a></td></tr>
+                <tr data-category="vulnerability" data-severity="high"><td class="num">03-10 08:21</td><td class="table-title">Remote access component exposure expanding<span>Asset hits in multiple regions</span></td><td>Vulnerability alerts</td><td>East Asia / Southeast Asia</td><td>Remote access</td><td><span class="badge badge-high">High</span></td><td><span class="status-dot success">Confirmed</span></td><td><a class="btn btn-ghost" href="vulnerability-detail.html?id=CVE-2026-17420">Details</a></td></tr>
+                <tr data-category="leak" data-severity="high"><td class="num">03-10 07:58</td><td class="table-title">Corporate email credential collection updated<span>Partially overlaps historical leak samples</span></td><td>Data leak</td><td>Western Europe</td><td>Corporate email</td><td><span class="badge badge-high">High</span></td><td><span class="status-dot info">Correlating</span></td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-005">Details</a></td></tr>
+              </tbody></table></div><div class="empty-state" data-table-empty="dashboard-events-table" style="display:none">No matching key events</div>
+            </article>
+          </section>
+
+          <section class="rank-grid dashboard-topic-rankings" data-od-id="dashboard-topic-rankings">
+            <article class="panel card rank-card dense-panel" data-od-id="dashboard-ransomware-ranking"><div class="panel-header"><h2>Active ransomware groups</h2><a class="btn btn-ghost" href="ransomware.html">All</a></div><div class="rank-hero"><span class="rank-badge">12</span><div><strong>LockBit</strong><span>Most active now</span></div></div><div class="bar-list-v2"><div class="bar-row-v2"><span>LockBit</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:100%"></i></div><b>12</b></div><div class="bar-row-v2"><span>Black Basta</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:75%"></i></div><b>9</b></div><div class="bar-row-v2"><span>Akira</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:58%"></i></div><b>7</b></div><div class="bar-row-v2"><span>RansomHub</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:50%"></i></div><b>6</b></div></div></article>
+            <article class="panel card rank-card dense-panel" data-od-id="dashboard-sensitive-ranking"><div class="panel-header"><h2>Sensitive information types</h2><a class="btn btn-ghost" href="data-leak.html">All</a></div><div class="rank-hero"><span class="rank-badge">32</span><div><strong>Credentials</strong><span>Highest share</span></div></div><div class="bar-list-v2"><div class="bar-row-v2"><span>Credentials</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:100%"></i></div><b>32</b></div><div class="bar-row-v2"><span>Customer data</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:75%"></i></div><b>24</b></div><div class="bar-row-v2"><span>Source code</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:56%"></i></div><b>18</b></div><div class="bar-row-v2"><span>Database image</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:44%"></i></div><b>14</b></div></div></article>
+            <article class="panel card rank-card dense-panel" data-od-id="dashboard-vendor-ranking"><div class="panel-header"><h2>Vulnerability vendor ranking</h2><a class="btn btn-ghost" href="vulnerabilities.html">All</a></div><div class="rank-hero"><span class="rank-badge">3</span><div><strong>Palo Alto Networks</strong><span>Key vendors</span></div></div><div class="bar-list-v2"><div class="bar-row-v2"><span>Palo Alto</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:100%"></i></div><b>3</b></div><div class="bar-row-v2"><span>Ivanti</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:67%"></i></div><b>2</b></div><div class="bar-row-v2"><span>Fortinet</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:67%"></i></div><b>2</b></div><div class="bar-row-v2"><span>Apache</span><div class="bar-track-v2"><i class="bar-fill-v2" style="--bar:67%"></i></div><b>2</b></div></div></article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

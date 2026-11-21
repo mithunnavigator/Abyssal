@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Event Details · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to main content</a>
+<div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="detail-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation" data-od-id="detail-nav">
+        <div class="nav-label">Workspace</div>
+        <a class="nav-link" href="dashboard.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Security workbench</a>
+        <a class="nav-link active" href="intelligence.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Threat Intelligence</a>
+        <a class="nav-link sub active" href="event-detail.html" aria-current="page">Event Details</a>
+        <a class="nav-link" href="monitoring.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v12H4zM8 21h8M12 17v4"/></svg>Exposure Monitoring</a>
+        <a class="nav-link" href="collector-sites.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M7 4v6M17 4v6M5 12h14v8H5z"/></svg>Collection Operations</a>
+        <div class="nav-label">Management</div>
+        <a class="nav-link" href="settings.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.4 6A8 8 0 0 0 8 7.1l-2.4-1-2 3.4L5.7 11a7 7 0 0 0 0 2L3.6 14.5l2 3.4 2.4-1A8 8 0 0 0 10.4 18l.3 2.6h4L15 18a8 8 0 0 0 1.6-1.1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z"/></svg>Configuration Center</a>
+      </nav>
+      <div class="sidebar-footer"><div class="coverage"><strong>Unified details</strong><span>Events / Vulnerabilities / Documents / Code hits</span></div></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+
+    <div class="app-stage">
+      <header class="app-header" data-od-id="detail-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <a class="btn btn-ghost" href="intelligence.html">← Back to event list</a>
+        <div class="header-actions"><span class="app-version" data-od-id="event-detail-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="event-detail-account">Personal</span></div>
+      </header>
+
+      <main class="app-main" id="content" data-od-id="detail-main">
+        <section class="section" data-od-id="detail-decision">
+          <article class="panel card detail-hero">
+            <div>
+              <div class="row" style="margin-bottom:12px"><span class="badge badge-critical">Critical · Exploited</span><span class="meta num" data-detail-record-id>CVE-2026-24001</span></div>
+              <h1 data-od-id="detail-title">Palo Alto PAN-OS GlobalProtect Gateway unauthenticated command execution</h1>
+            </div>
+            <div class="detail-summary">
+              <div><span>Action priority</span><strong>Check immediately</strong></div>
+              <div><span>CVSS</span><strong class="num">10.0</strong></div>
+              <div><span>Patch status</span><strong>Patch available</strong></div>
+              <div><span>Current handling</span><strong data-review-state>Pending assessment</strong></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-od-id="detail-content">
+          <div class="split-rail split-rail--drawer">
+            <div class="stack">
+              <article class="panel card" data-od-id="detail-key-information">
+                <div class="panel-header"><div><h2>Key judgment information</h2><p>Answer the affected scope and whether action is needed first</p></div><span class="badge badge-critical">Remote code execution</span></div>
+                <div class="definition-grid">
+                  <div><span>Vendor</span><strong>Palo Alto Networks</strong></div>
+                  <div><span>Product</span><strong>PAN-OS GlobalProtect</strong></div>
+                  <div><span>Disclosure time</span><strong class="num">2026-03-10 09:31</strong></div>
+                  <div><span>Exploitation status</span><strong>In-the-wild exploitation confirmed</strong></div>
+                  <div><span>PoC Status</span><strong>To be confirmed</strong></div>
+                  <div><span>Affected versions</span><strong>Returned by affected_version_items</strong></div>
+                </div>
+              </article>
+
+              <article class="panel card" data-od-id="detail-risk-reasoning">
+                <div class="panel-header"><div><h2>Why this needs priority handling</h2><p>The score breakdown is shown as explainable judgment criteria</p></div></div>
+                <div class="queue-list">
+                  <article class="queue-item"><span class="badge badge-critical">Exploitation evidence</span><h3>Public sources confirm real exploitation activity</h3><p>This is not just a theoretical PoC risk; it should go into asset checks first.</p></article>
+                  <article class="queue-item"><span class="badge badge-high">Exposure surface</span><h3>Target sits at the internet edge</h3><p>GlobalProtect Gateways are usually exposed directly to the internet, giving a short path to risk.</p></article>
+                  <article class="queue-item"><span class="badge badge-success">Mitigating conditions</span><h3>Vendor patch available</h3><p>Version checks, upgrade windows and temporary isolation can proceed in parallel.</p></article>
+                </div>
+              </article>
+
+              <article class="panel card" data-od-id="detail-evidence">
+                <div class="panel-header"><div><h2>Sources and evidence</h2><p>Evidence, reference links and original records shown together</p></div><button class="btn btn-secondary" data-toast="Body language switched">Switch to original</button></div>
+                <div class="stack">
+                  <div class="evidence-block"><span class="meta">Data source</span><pre>Public vulnerability intelligence · Reference links to be added</pre></div>
+                  <div class="definition-grid"><div><span>Source category</span><strong>Public vulnerability intelligence</strong></div><div><span>Reference link</span><strong>—</strong></div><div><span>Sample evidence</span><strong>—</strong></div></div>
+                </div>
+              </article>
+
+            </div>
+
+            <aside class="panel card sticky-card" data-od-id="detail-action-rail">
+              <div class="panel-header"><div><h2>Handle this event</h2><p>The status is written back to the existing review API</p></div></div>
+              <div class="stack">
+                <button class="btn btn-secondary" data-disposition="Confirmed">Confirm risk</button>
+                <button class="btn btn-secondary" data-disposition="False positive">Mark as false positive</button>
+                <button class="btn btn-secondary" data-disposition="Closed">Close event</button>
+                <div class="field"><label for="detail-note">Handling notes</label><textarea class="textarea" id="detail-note" placeholder="Record asset checks, patch plans or closing reasons"></textarea></div>
+                <button class="btn btn-primary" data-toast="Event assessment saved">Save assessment</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

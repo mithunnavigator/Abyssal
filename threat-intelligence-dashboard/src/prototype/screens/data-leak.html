@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Leak Verification Center · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-data-leak">
+<div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="data-leak-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation"></nav><div class="sidebar-footer"></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+    <div class="app-stage">
+      <header class="app-header" data-od-id="data-leak-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation">☰</button>
+        <div class="header-actions"><span class="app-version" data-od-id="data-leak-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="data-leak-account">Personal</span></div>
+      </header>
+
+      <main class="app-main" id="content" data-od-id="data-leak-main">
+        <section class="card leak-verification-grid dense-panel" data-od-id="data-leak-verification-workspace">
+          <div class="source-monitor" data-od-id="data-leak-source-channels">
+            <div class="panel-header"><h2>Source channel</h2><span class="meta">Today</span></div>
+            <button class="source-row active" data-toast="Switched to dark web forum leads"><span class="source-symbol forum" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v10H9l-4.5 3v-3H4z"/><path d="M8 9h8M8 12h5"/></svg></span><div><strong>Dark web forums</strong><small>12  records · trusted 7</small></div><b>38%</b></button>
+            <button class="source-row" data-toast="Switched to instant messaging leads"><span class="source-symbol chat" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h12v9H9l-4 3v-3H4z"/><path d="M10 8h10v8h-3l-4 3v-3h-3"/></svg></span><div><strong>Instant messaging</strong><small>8  records · trusted 3</small></div><b>26%</b></button>
+            <button class="source-row" data-toast="Switched to ransomware site leads"><span class="source-symbol ransom" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/><path d="m9 14 6 3m0-3-6 3"/></svg></span><div><strong>Ransomware sites</strong><small>6  records · trusted 5</small></div><b>19%</b></button>
+            <button class="source-row" data-toast="Switched to public storage leads"><span class="source-symbol storage" aria-hidden="true"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7" ry="3"/><path d="M5 5.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/><path d="M5 11.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><div><strong>Public storage</strong><small>5  records · trusted 2</small></div><b>17%</b></button>
+          </div>
+
+          <div class="data-table-panel leak-events-section" data-od-id="data-leak-exposure-list">
+            <div class="panel-header"><h2>Exposure events <span class="heading-count" data-table-count="data-leak-table">5</span></h2><button class="btn btn-secondary" data-toast="Current list exported">Export</button></div>
+            <div class="toolbar"><select class="select" data-date-filter-target="data-leak-table" aria-label="Disclosure date"><option value="">All disclosure dates</option><option value="1">24  hours</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select><select class="select" data-filter-target="data-leak-table" data-filter-key="classification"><option value="">All event categories</option><option value="database">Database leak</option><option value="credential">Credential leak</option><option value="source-code">Source code leak</option><option value="log-data">Log data leak</option></select><select class="select" data-filter-target="data-leak-table" data-filter-key="attacker"><option value="">All threat actors</option><option value="darkforums">DarkForums</option><option value="undisclosed">Not disclosed</option></select><select class="select" data-filter-target="data-leak-table" data-filter-key="industry"><option value="">All industries</option><option value="commerce">E-commerce</option><option value="finance">Finance</option><option value="manufacturing">Manufacturing</option><option value="education">Education</option><option value="healthcare">Healthcare</option></select><div class="search-field"><input class="input" data-table-search="data-leak-table" placeholder="Search titles, threat actors or industries"></div></div>
+            <div class="table-wrap"><table class="ds-table data-leak-events-table" id="data-leak-table" data-table><thead><tr><th>Disclosure date</th><th>Last updated</th><th>Title</th><th>Event category</th><th>Threat actor</th><th>Industry</th><th>View</th></tr></thead><tbody>
+              <tr data-discovered-at="2026-03-10T09:26:00" data-classification="database" data-attacker="darkforums" data-industry="commerce" data-od-id="data-leak-row-commerce"><td class="num">2026-03-10</td><td class="num">2026-03-10 09:26</td><td class="table-title">Cross-border e-commerce platform customer order and contact samples leaked</td><td>Database leak</td><td>DarkForums</td><td>E-commerce</td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-008">View</a></td></tr>
+              <tr data-discovered-at="2026-03-10T08:58:00" data-classification="credential" data-attacker="darkforums" data-industry="finance" data-od-id="data-leak-row-finance"><td class="num">2026-03-10</td><td class="num">2026-03-10 08:58</td><td class="table-title">Financial SaaS platform back-office credential bundle in secondary distribution</td><td>Credential leak</td><td>DarkForums</td><td>Finance</td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-011">View</a></td></tr>
+              <tr data-discovered-at="2026-03-10T08:14:00" data-classification="source-code" data-attacker="undisclosed" data-industry="manufacturing" data-od-id="data-leak-row-manufacturing"><td class="num">2026-03-10</td><td class="num">2026-03-10 08:14</td><td class="table-title">German manufacturer source code repository and configuration files leaked</td><td>Source code leak</td><td>Not disclosed</td><td>Manufacturing</td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-013">View</a></td></tr>
+              <tr data-discovered-at="2026-03-10T07:49:00" data-classification="log-data" data-attacker="undisclosed" data-industry="education" data-od-id="data-leak-row-education"><td class="num">2026-03-10</td><td class="num">2026-03-10 07:49</td><td class="table-title">Indian education platform authentication logs publicly exposed</td><td>Log data leak</td><td>Not disclosed</td><td>Education</td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-004">View</a></td></tr>
+              <tr data-discovered-at="2026-03-10T06:42:00" data-classification="database" data-attacker="darkforums" data-industry="healthcare" data-od-id="data-leak-row-healthcare"><td class="num">2026-03-10</td><td class="num">2026-03-10 06:42</td><td class="table-title">French healthcare platform appointment system database image leaked</td><td>Database leak</td><td>DarkForums</td><td>Healthcare</td><td><a class="btn btn-ghost" href="data-leak-detail.html?id=LEAK-2026-0310-002">View</a></td></tr>
+            </tbody></table></div><div class="empty-state" data-table-empty="data-leak-table">No matching events</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div><script src="app.js"></script>
+</body>
+</html>

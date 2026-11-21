@@ -1,0 +1,158 @@
+import { requestJson } from '@/composables/requestJson'
+
+function buildQuery(params = {}) {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value == null || value === '') continue
+    query.set(key, String(value))
+  }
+  const text = query.toString()
+  return text ? `?${text}` : ''
+}
+
+export function useCodeMonitoringApi() {
+  return {
+    loadSummary() {
+      return requestJson('/api/code-monitoring/summary')
+    },
+    loadGithubAppConfig() {
+      return requestJson('/api/code-monitoring/github-app')
+    },
+    saveGithubAppConfig(payload) {
+      return requestJson('/api/code-monitoring/github-app', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    deleteGithubAppConfig() {
+      return requestJson('/api/code-monitoring/github-app', {
+        method: 'DELETE',
+      })
+    },
+    loadSessions() {
+      return requestJson('/api/platform-sessions?module=code_monitoring')
+    },
+    autoDetectSessions() {
+      return requestJson('/api/platform-sessions/auto-detect?module=code_monitoring', {
+        method: 'POST',
+      })
+    },
+    startRemoteLogin(platform) {
+      return requestJson(`/api/platform-sessions/${encodeURIComponent(platform)}/remote-login/start`, {
+        method: 'POST',
+      })
+    },
+    loadRemoteLoginState(sessionId) {
+      return requestJson(`/api/platform-sessions/remote-login/${encodeURIComponent(sessionId)}`)
+    },
+    controlRemoteLogin(sessionId, payload) {
+      return requestJson(`/api/platform-sessions/remote-login/${encodeURIComponent(sessionId)}/control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    finishRemoteLogin(sessionId, accountLabel) {
+      return requestJson(`/api/platform-sessions/remote-login/${encodeURIComponent(sessionId)}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_label: accountLabel || '' }),
+      })
+    },
+    closeRemoteLogin(sessionId) {
+      return requestJson(`/api/platform-sessions/remote-login/${encodeURIComponent(sessionId)}`, {
+        method: 'DELETE',
+      })
+    },
+    saveSession(platform, accountLabel) {
+      return requestJson(`/api/platform-sessions/${encodeURIComponent(platform)}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_label: accountLabel || '' }),
+      })
+    },
+    verifySession(platform) {
+      return requestJson(`/api/platform-sessions/${encodeURIComponent(platform)}/verify`, {
+        method: 'POST',
+      })
+    },
+    deleteSession(platform) {
+      return requestJson(`/api/platform-sessions/${encodeURIComponent(platform)}`, {
+        method: 'DELETE',
+      })
+    },
+    loadWatchlists() {
+      return requestJson('/api/code-monitoring/watchlists')
+    },
+    saveWatchlist(payload) {
+      return requestJson('/api/code-monitoring/watchlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    deleteWatchlist(watchlistId) {
+      return requestJson(`/api/code-monitoring/watchlists/${watchlistId}`, {
+        method: 'DELETE',
+      })
+    },
+    runScan(watchlistId, payload) {
+      return requestJson(`/api/code-monitoring/watchlists/${watchlistId}/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    loadScans(params = {}) {
+      return requestJson(`/api/code-monitoring/scans${buildQuery({
+        watchlist_id: params.watchlistId,
+        limit: params.limit,
+      })}`)
+    },
+    loadContinuousStatus(params = {}) {
+      return requestJson(`/api/code-monitoring/continuous-status${buildQuery({
+        watchlist_id: params.watchlistId,
+      })}`)
+    },
+    runContinuousOnce() {
+      return requestJson('/api/code-monitoring/continuous/run', {
+        method: 'POST',
+      })
+    },
+    startContinuous(payload) {
+      return requestJson('/api/code-monitoring/continuous/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    stopContinuous(payload) {
+      return requestJson('/api/code-monitoring/continuous/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+    loadHits(params = {}) {
+      return requestJson(`/api/code-monitoring/hits${buildQuery({
+        watchlist_id: params.watchlistId,
+        review_status: params.reviewStatus,
+        platform: params.platform,
+        sensitive_type: params.sensitiveType,
+        include_suppressed: params.includeSuppressed,
+        limit: params.limit,
+      })}`)
+    },
+    loadHitDetail(hitId) {
+      return requestJson(`/api/code-monitoring/hits/${hitId}`)
+    },
+    reviewHit(hitId, payload) {
+      return requestJson(`/api/code-monitoring/hits/${hitId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+    },
+  }
+}

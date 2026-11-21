@@ -1,0 +1,1675 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from threading import Event, Lock, Thread
+import logging
+import time
+from typing import Any
+
+from darkweb_collector.browser_process_pool import browser_process_pool_status
+from darkweb_collector.code_monitoring import (
+    github_code_search_status_payload,
+    list_code_watchlists_payload,
+    scan_code_watchlist_once,
+)
+from darkweb_collector.config import get_site_config, load_site_configs, set_site_enabled
+from darkweb_collector.db import (
+    get_active_crawl_job,
+    get_db_connection,
+    get_last_successful_crawl_job,
+    get_latest_crawl_job,
+    get_ransomware_live_sync_state,
+    get_site_connectivity_probe_map,
+    upsert_site_connectivity_probe,
+)
+from darkweb_collector.document_exposure import (
+    SUPPORTED_SOURCE_FAMILIES,
+    _watchlist_metadata as _exposure_watchlist_metadata,
+    list_watchlists_payload,
+    scan_watchlist_once,
+)
+from darkweb_collector.changan_auto_login import changan_auto_login_available
+from darkweb_collector.job_diagnostics import consecutive_failures, failure_cooldown_until
+from darkweb_collector.orchestrator import dispatch_seed_job, is_site_due
+from darkweb_collector.public_vulnerabilities import sync_public_vulnerability_feed
+from darkweb_collector.queueing import (
+    BROWSER_ACTIVE_QUEUES,
+    BROWSER_QUEUES,
+    browser_concurrency,
+    browser_queue_concurrency,
+    queue_for_seed,
+)
+from darkweb_collector.ransomware_live import (
+    get_ransomware_live_api_key,
+    get_ransomware_live_sync_config,
+    get_ransomware_live_sync_status_snapshot,
+    set_ransomware_live_sync_config,
+)
+from darkweb_collector.site_auth import site_auth_readiness
+from darkweb_collector.tor_fetch import fetch_url, is_onion_url
+from darkweb_collector.utils import utc_now_iso
+
+
+STALE_RUNNING_MINUTES = 30
+STALE_ENQUEUED_MINUTES = 10
+STALE_ENQUEUED_BUSY_QUEUE_MINUTES = 60
+CONTINUOUS_INTERVAL_SECONDS = 60
+DEFAULT_VULNERABILITY_SYNC_INTERVAL_SECONDS = 3600
+DEFAULT_VULNERABILITY_SYNC_LIMIT = 300
+DEFAULT_RANSOMWARE_SYNC_INTERVAL_SECONDS = 3600
+DEFAULT_RANSOMWARE_SYNC_LIMIT = 0
+DEFAULT_CODE_MONITORING_INTERVAL_SECONDS = 3600
+DEFAULT_CODE_MONITORING_CONTINUOUS_SEARCH_PAGE_LIMIT = 2
+DEFAULT_CODE_MONITORING_CONTINUOUS_MAX_RESULTS_PER_TERM = 5
+DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS = 3600
+WORKER_QUEUE_CACHE_TTL_SECONDS = 5
+WORKER_QUEUE_REFRESH_WAIT_SECONDS = 15
+SITE_CONNECTIVITY_PROBE_INTERVAL_SECONDS = 24 * 60 * 60
+SITE_CONNECTIVITY_MONITOR_POLL_SECONDS = 10 * 60
+
+
+logger = logging.getLogger("darkweb_collector.api_actions")
+
+
+_continuous_lock = Lock()
+_continuous_enabled = False
+_continuous_started_at = ""
+_continuous_last_tick_at = ""
+_continuous_mode = "queue"
+_continuous_stop_event: Event | None = None
+_continuous_thread: Thread | None = None
+
+_vulnerability_sync_lock = Lock()
+_vulnerability_sync_enabled = False
+_vulnerability_sync_started_at = ""
+_vulnerability_sync_last_tick_at = ""
+_vulnerability_sync_last_success_at = ""
+_vulnerability_sync_last_error = ""
+_vulnerability_sync_last_mode = ""
+_vulnerability_sync_last_source = ""
+_vulnerability_sync_last_ingested = 0
+_vulnerability_sync_interval_seconds = DEFAULT_VULNERABILITY_SYNC_INTERVAL_SECONDS
+_vulnerability_sync_limit = DEFAULT_VULNERABILITY_SYNC_LIMIT
+_vulnerability_sync_running = False
+_vulnerability_sync_stop_event: Event | None = None
+_vulnerability_sync_thread: Thread | None = None
+
+_code_monitoring_lock = Lock()
+_code_monitoring_enabled = False
+_code_monitoring_started_at = ""
+_code_monitoring_last_tick_at = ""
+_code_monitoring_last_success_at = ""
+_code_monitoring_last_error = ""
+_code_monitoring_interval_seconds = DEFAULT_CODE_MONITORING_INTERVAL_SECONDS
+_code_monitoring_running = False
+_code_monitoring_last_watchlist_count = 0
+_code_monitoring_last_candidate_count = 0
+_code_monitoring_last_hit_count = 0
+_code_monitoring_last_clue_hit_count = 0
+_code_monitoring_last_sensitive_hit_count = 0
+_code_monitoring_target_watchlist_id = 0
+_code_monitoring_target_watchlist_name = ""
+_code_monitoring_stop_event: Event | None = None
+_code_monitoring_thread: Thread | None = None
+_code_monitoring_tasks: dict[int, dict[str, Any]] = {}
+
+_netdisk_monitoring_lock = Lock()
+_netdisk_monitoring_once_running = False
+_netdisk_monitoring_once_thread: Thread | None = None
+_netdisk_monitoring_tasks: dict[int, dict[str, Any]] = {}
+
+_worker_queue_cache_lock = Lock()
+_worker_queue_cache_checked_at = 0.0
+_worker_queue_cache_refresh_started_at = 0.0
+_worker_queue_cache_available = False
+_worker_queue_cache: set[str] = set()
+_worker_queue_worker_counts: dict[str, int] = {}
+_worker_queue_worker_names: dict[str, list[str]] = {}
+_worker_queue_refresh_thread: Thread | None = None
+_site_connectivity_monitor_lock = Lock()
+_site_connectivity_monitor_thread: Thread | None = None
+
+
+def _persist_site_connectivity_probe(payload: dict[str, Any]) -> None:
+    with get_db_connection() as connection:
+        upsert_site_connectivity_probe(connection, payload)
+
+
+def probe_site_connectivity(site_name: str) -> dict[str, Any]:
+    config = get_site_config(site_name)
+    url = config.seed_urls[0]
+    fetch_mode = "tor_http" if is_onion_url(url) else config.seed_fetch_mode
+    started = time.perf_counter()
+    try:
+        html = fetch_url(
+            url=url,
+            mode=fetch_mode,
+            timeout_seconds=min(max(config.fetch_timeout_seconds, 5), 30),
+            render_wait_seconds=min(max(config.render_wait_seconds, 1), 5),
+            retries=0,
+        )
+        available = True
+        error = ""
+    except Exception as exc:
+        html = ""
+        available = False
+        error = str(exc).strip()[:500] or type(exc).__name__
+    error_lower = error.lower()
+    failure_reason = (
+        ""
+        if available
+        else "route_unavailable"
+        if any(marker in error_lower for marker in ("socks", "proxy", "tor connection"))
+        else "timeout"
+        if any(marker in error_lower for marker in ("timed out", "timeout"))
+        else "fetch_failed"
+    )
+    latency_ms = max(0, round((time.perf_counter() - started) * 1000))
+    payload = {
+        "site_name": config.site_name,
+        "url": url,
+        "fetch_mode": fetch_mode,
+        "available": available,
+        "status": "available" if available else "unavailable",
+        "latency_ms": latency_ms,
+        "checked_at": utc_now_iso(),
+        "response_bytes": len(html.encode("utf-8", errors="replace")),
+        "failure_reason": failure_reason,
+        "error": error,
+    }
+    _persist_site_connectivity_probe(payload)
+    return payload
+
+
+def _parse_dt(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _tor_route_ready_for_probe(url: str) -> bool:
+    if not is_onion_url(url):
+        return True
+    try:
+        from darkweb_collector.tor_bridge_control import get_tor_bridge_status, load_tor_bridge_settings
+
+        settings = load_tor_bridge_settings()
+        if not settings.get("enabled"):
+            return True
+        return bool(get_tor_bridge_status().get("connected"))
+    except Exception:
+        return True
+
+
+def run_due_site_connectivity_probes(*, now: datetime | None = None) -> dict[str, list[str]]:
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    with get_db_connection() as connection:
+        latest = get_site_connectivity_probe_map(connection)
+
+    result: dict[str, list[str]] = {
+        "probed": [],
+        "skipped_recent": [],
+        "skipped_route": [],
+        "errors": [],
+    }
+    for config in load_site_configs():
+        if not config.enabled or not config.seed_urls:
+            continue
+        previous = latest.get(config.site_name) or {}
+        checked_at = _parse_dt(str(previous.get("checked_at") or ""))
+        if checked_at is not None and (current - checked_at).total_seconds() < SITE_CONNECTIVITY_PROBE_INTERVAL_SECONDS:
+            result["skipped_recent"].append(config.site_name)
+            continue
+        if not _tor_route_ready_for_probe(config.seed_urls[0]):
+            result["skipped_route"].append(config.site_name)
+            continue
+        try:
+            probe_site_connectivity(config.site_name)
+            result["probed"].append(config.site_name)
+        except Exception as exc:
+            result["errors"].append(config.site_name)
+            logger.warning("daily site connectivity probe failed for %s: %s", config.site_name, exc)
+    return result
+
+
+def _site_connectivity_monitor_loop(stop_event: Event) -> None:
+    while not stop_event.is_set():
+        try:
+            run_due_site_connectivity_probes()
+        except Exception:
+            logger.exception("daily site connectivity monitor failed")
+        if stop_event.wait(SITE_CONNECTIVITY_MONITOR_POLL_SECONDS):
+            break
+
+
+def start_site_connectivity_monitor() -> None:
+    global _site_connectivity_monitor_thread
+    with _site_connectivity_monitor_lock:
+        if _site_connectivity_monitor_thread and _site_connectivity_monitor_thread.is_alive():
+            return
+        stop_event = Event()
+        thread = Thread(
+            target=_site_connectivity_monitor_loop,
+            args=(stop_event,),
+            name="site-connectivity-monitor",
+            daemon=True,
+        )
+        _site_connectivity_monitor_thread = thread
+        thread.start()
+
+
+def _has_recent_running_job_in_queue(connection, queue_name: str, *, exclude_job_id: str = "") -> bool:
+    if not queue_name:
+        return False
+    rows = connection.execute(
+        """
+        SELECT job_id, started_at, finished_at
+        FROM crawl_jobs
+        WHERE queue_name = ? AND status = 'running'
+        """,
+        (queue_name,),
+    ).fetchall()
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=STALE_RUNNING_MINUTES)
+    for row in rows:
+        job_id = str(row["job_id"] or "")
+        if exclude_job_id and job_id == exclude_job_id:
+            continue
+        if row["finished_at"]:
+            continue
+        started_at = _parse_dt(row["started_at"])
+        if started_at is not None and started_at >= cutoff:
+            return True
+    return False
+
+
+def _is_active_job_blocking(active_job: dict[str, Any] | None, *, queue_has_recent_running: bool = False) -> bool:
+    if not active_job:
+        return False
+    status = active_job.get("status")
+    if status == "enqueued":
+        enqueued_at = _parse_dt(active_job.get("enqueued_at"))
+        if enqueued_at is None:
+            return False
+        threshold_minutes = (
+            STALE_ENQUEUED_BUSY_QUEUE_MINUTES if queue_has_recent_running else STALE_ENQUEUED_MINUTES
+        )
+        return enqueued_at >= datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    if status != "running":
+        return False
+    started_at = _parse_dt(active_job.get("started_at"))
+    if started_at is None:
+        return False
+    return started_at >= datetime.now(timezone.utc) - timedelta(minutes=STALE_RUNNING_MINUTES)
+
+
+def _mark_stale_active_job(site_name: str, active_job: dict[str, Any] | None) -> None:
+    if not active_job:
+        return
+    if active_job.get("status") not in {"enqueued", "running"}:
+        return
+
+    marker = _parse_dt(active_job.get("started_at") or active_job.get("enqueued_at"))
+    if marker is None:
+        return
+
+    with get_db_connection() as connection:
+        connection.execute(
+            """
+            UPDATE crawl_jobs
+            SET status = 'stale', finished_at = ?, error_message = 'stale seed task auto-cleared'
+            WHERE job_id = ? AND site_name = ? AND job_type = 'seed' AND status = ?
+                AND COALESCE(started_at, '') = ? AND COALESCE(enqueued_at, '') = ?
+            """,
+            (utc_now_iso(), str(active_job["job_id"]), site_name, active_job["status"],
+             active_job.get("started_at") or "", active_job.get("enqueued_at") or ""),
+        )
+        connection.commit()
+
+
+def _refresh_worker_queue_cache() -> tuple[set[str], dict[str, int], dict[str, list[str]]] | None:
+    try:
+        from darkweb_collector.celery_app import app as celery_app
+
+        inspect = celery_app.control.inspect(timeout=0.8)
+        active_queues = inspect.active_queues()
+    except Exception:
+        return None
+    if not active_queues:
+        return None
+    queue_names: set[str] = set()
+    worker_counts: dict[str, int] = {}
+    worker_names: dict[str, list[str]] = {}
+    for worker_name, worker_queues in active_queues.items():
+        for queue in worker_queues or []:
+            name = str((queue or {}).get("name") or "").strip()
+            if name:
+                queue_names.add(name)
+                worker_counts[name] = worker_counts.get(name, 0) + 1
+                worker_names.setdefault(name, []).append(str(worker_name))
+    return queue_names, worker_counts, {name: sorted(names) for name, names in worker_names.items()}
+
+
+def _refresh_worker_queue_cache_in_background() -> None:
+    global _worker_queue_cache_checked_at, _worker_queue_cache, _worker_queue_worker_counts, _worker_queue_worker_names
+    global _worker_queue_cache_available, _worker_queue_refresh_thread, _worker_queue_cache_refresh_started_at
+    snapshot = None
+    try:
+        snapshot = _refresh_worker_queue_cache()
+    finally:
+        with _worker_queue_cache_lock:
+            if snapshot is not None:
+                _worker_queue_cache, _worker_queue_worker_counts, _worker_queue_worker_names = snapshot
+            _worker_queue_cache_available = snapshot is not None
+            _worker_queue_cache_checked_at = time.monotonic()
+            _worker_queue_cache_refresh_started_at = 0.0
+            _worker_queue_refresh_thread = None
+
+
+def _schedule_worker_queue_cache_refresh() -> None:
+    global _worker_queue_refresh_thread, _worker_queue_cache_refresh_started_at
+    with _worker_queue_cache_lock:
+        now = time.monotonic()
+        cache_is_fresh = _worker_queue_cache_checked_at > 0 and (now - _worker_queue_cache_checked_at) <= WORKER_QUEUE_CACHE_TTL_SECONDS
+        if cache_is_fresh or _worker_queue_refresh_thread is not None:
+            return
+        _worker_queue_refresh_thread = Thread(
+            target=_refresh_worker_queue_cache_in_background,
+            name="worker-queue-status-refresh",
+            daemon=True,
+        )
+        _worker_queue_cache_refresh_started_at = now
+        _worker_queue_refresh_thread.start()
+
+
+def _has_queue_worker(queue_name: str) -> bool:
+    _schedule_worker_queue_cache_refresh()
+    with _worker_queue_cache_lock:
+        # Unknown or refreshing state must not start a second local collector.
+        if not _worker_queue_cache_available or _worker_queue_refresh_thread is not None:
+            return True
+        return queue_name in _worker_queue_cache
+
+
+def dispatch_run_site(site_name: str, force: bool = True) -> dict[str, Any]:
+    config = get_site_config(site_name)
+    auth = site_auth_readiness(config)
+    if not auth["ready"] and not changan_auto_login_available(config):
+        return {
+            "site_name": site_name,
+            "dispatch_mode": "skipped",
+            "message": auth["auth_message"],
+            "job_id": "",
+            "reason": "auth_required",
+            "auth_platform": auth["auth_platform"],
+            "auth_status": auth["auth_status"],
+        }
+    with get_db_connection() as connection:
+        active_job = get_active_crawl_job(connection, site_name=site_name, job_type="seed")
+        last_success = get_last_successful_crawl_job(connection, site_name=site_name, job_type="seed")
+        queue_has_recent_running = _has_recent_running_job_in_queue(
+            connection,
+            str((active_job or {}).get("queue_name") or ""),
+            exclude_job_id=str((active_job or {}).get("job_id") or ""),
+        )
+        seed_rows = [
+            dict(row)
+            for row in connection.execute(
+                """
+                SELECT status, started_at, finished_at, enqueued_at, error_message
+                FROM crawl_jobs
+                WHERE site_name = ? AND job_type = 'seed'
+                ORDER BY COALESCE(finished_at, started_at, enqueued_at) DESC
+                LIMIT 20
+                """,
+                (site_name,),
+            ).fetchall()
+        ]
+    if _is_active_job_blocking(active_job, queue_has_recent_running=queue_has_recent_running):
+        return {
+            "site_name": site_name,
+            "dispatch_mode": "skipped",
+            "message": "This site already has a running seed task",
+            "job_id": active_job.get("job_id") if active_job else "",
+        }
+    cooldown_until = failure_cooldown_until(config, seed_rows)
+    if not force and cooldown_until is not None and datetime.now(timezone.utc) < cooldown_until:
+        return {
+            "site_name": site_name,
+            "dispatch_mode": "skipped",
+            "message": "This site has reached the consecutive failure threshold and is still cooling down",
+            "job_id": "",
+            "reason": "failure_cooldown",
+            "consecutive_failures": consecutive_failures(seed_rows),
+            "failure_cooldown_until": cooldown_until.isoformat(),
+        }
+    if not force and not is_site_due(config, last_success["finished_at"] if last_success else None):
+        return {
+            "site_name": site_name,
+            "dispatch_mode": "skipped",
+            "message": "It is not yet time to collect this site",
+            "job_id": "",
+            "reason": "interval_wait",
+        }
+
+    _mark_stale_active_job(site_name, active_job)
+
+    queue_name = queue_for_seed(config)
+    if not _has_queue_worker(queue_name):
+        return {
+            "site_name": site_name,
+            "dispatch_mode": "skipped",
+            "message": "The collection process for this queue is not ready yet; wait for automatic recovery and try again",
+            "job_id": "",
+            "reason": "worker_unavailable",
+        }
+
+    from darkweb_collector.tasks import crawl_seed
+
+    job_id = dispatch_seed_job(
+        config,
+        lambda selected_id: crawl_seed.apply_async(
+            kwargs={"site_name": site_name, "force": force},
+            queue=queue_name,
+            task_id=selected_id,
+        ),
+    )
+    return {
+        "site_name": site_name,
+        "dispatch_mode": "queue",
+        "message": "Submitted to the task queue",
+        "job_id": job_id,
+    }
+
+
+def dispatch_run_all_enabled_sites(force: bool = True) -> dict[str, Any]:
+    results = []
+    for config in load_site_configs():
+        if not config.enabled:
+            continue
+        results.append(dispatch_run_site(config.site_name, force=force))
+    return {
+        "count": len(results),
+        "results": results,
+    }
+
+
+def dispatch_run_all_enabled_sites_once(force: bool = True) -> dict[str, Any]:
+    return dispatch_run_all_enabled_sites(force=force)
+
+
+def _continuous_loop(stop_event: Event) -> None:
+    global _continuous_last_tick_at, _continuous_enabled
+    while not stop_event.is_set():
+        _continuous_last_tick_at = utc_now_iso()
+        try:
+            configs = load_site_configs()
+        except Exception:
+            logger.warning("Could not load continuous crawl schedule; retrying next tick")
+            configs = []
+        for config in configs:
+            if not config.enabled:
+                continue
+            try:
+                dispatch_run_site(config.site_name, force=False)
+            except Exception:
+                logger.warning("Continuous seed dispatch failed for %s; retrying next tick", config.site_name)
+        if stop_event.wait(CONTINUOUS_INTERVAL_SECONDS):
+            break
+    _continuous_enabled = False
+
+
+def start_continuous_dispatch() -> dict[str, Any]:
+    global _continuous_enabled, _continuous_started_at, _continuous_last_tick_at, _continuous_stop_event, _continuous_thread
+    with _continuous_lock:
+        if _continuous_enabled and _continuous_thread and _continuous_thread.is_alive():
+            return {
+                "enabled": True,
+                "started_at": _continuous_started_at,
+                "last_tick_at": _continuous_last_tick_at,
+                "mode": _continuous_mode,
+                "message": "Persistent run is already running",
+            }
+
+        stop_event = Event()
+        thread = Thread(target=_continuous_loop, args=(stop_event,), daemon=True)
+        _continuous_enabled = True
+        _continuous_started_at = utc_now_iso()
+        _continuous_last_tick_at = ""
+        _continuous_stop_event = stop_event
+        _continuous_thread = thread
+        thread.start()
+
+        return {
+            "enabled": True,
+            "started_at": _continuous_started_at,
+            "last_tick_at": _continuous_last_tick_at,
+            "mode": _continuous_mode,
+            "message": "Persistent run started",
+        }
+
+
+def stop_continuous_dispatch() -> dict[str, Any]:
+    global _continuous_enabled, _continuous_stop_event, _continuous_thread
+    with _continuous_lock:
+        if not _continuous_enabled or _continuous_stop_event is None:
+            return {
+                "enabled": False,
+                "started_at": _continuous_started_at,
+                "last_tick_at": _continuous_last_tick_at,
+                "mode": _continuous_mode,
+                "message": "Persistent scheduling is not currently running",
+            }
+
+        _continuous_stop_event.set()
+        _continuous_enabled = False
+        return {
+            "enabled": False,
+            "started_at": _continuous_started_at,
+            "last_tick_at": _continuous_last_tick_at,
+            "mode": _continuous_mode,
+            "message": "Persistent run stopped",
+        }
+
+
+def get_continuous_dispatch_status() -> dict[str, Any]:
+    thread_alive = bool(_continuous_thread and _continuous_thread.is_alive())
+    enabled = bool(_continuous_enabled and thread_alive)
+    return {
+        "enabled": enabled,
+        "started_at": _continuous_started_at,
+        "last_tick_at": _continuous_last_tick_at,
+        "mode": _continuous_mode,
+    }
+
+
+def get_browser_runtime_status() -> dict[str, Any]:
+    _schedule_worker_queue_cache_refresh()
+    with _worker_queue_cache_lock:
+        worker_queues = sorted(_worker_queue_cache)
+        worker_counts = dict(_worker_queue_worker_counts)
+        worker_names = {name: list(names) for name, names in _worker_queue_worker_names.items()}
+        worker_status = "ready" if _worker_queue_cache_available else "unknown"
+        if _worker_queue_refresh_thread is not None:
+            elapsed = time.monotonic() - _worker_queue_cache_refresh_started_at
+            worker_status = "refreshing" if elapsed < WORKER_QUEUE_REFRESH_WAIT_SECONDS else "unknown"
+    browser_worker_names = sorted(
+        {
+            worker_name
+            for queue_name in BROWSER_QUEUES
+            for worker_name in worker_names.get(queue_name, [])
+        }
+    )
+    browser_worker_count = len(browser_worker_names)
+    configured_concurrency = browser_concurrency()
+    return {
+        "browser_queue": ",".join(BROWSER_ACTIVE_QUEUES),
+        "browser_queues": list(BROWSER_QUEUES),
+        "queue_configured_concurrency": {
+            queue_name: browser_queue_concurrency(queue_name)
+            for queue_name in BROWSER_ACTIVE_QUEUES
+        },
+        "configured_concurrency": configured_concurrency,
+        "browser_concurrency": configured_concurrency,
+        "browser_worker_count": browser_worker_count,
+        "browser_worker_names": browser_worker_names,
+        "local_process_pool": browser_process_pool_status(),
+        "worker_queues": worker_queues,
+        "worker_counts": worker_counts,
+        "worker_status": worker_status,
+    }
+
+
+def _run_vulnerability_sync(limit: int, prefer_live: bool = True) -> dict[str, Any]:
+    global _vulnerability_sync_running
+    global _vulnerability_sync_last_tick_at
+    global _vulnerability_sync_last_success_at
+    global _vulnerability_sync_last_error
+    global _vulnerability_sync_last_mode
+    global _vulnerability_sync_last_source
+    global _vulnerability_sync_last_ingested
+    with _vulnerability_sync_lock:
+        _vulnerability_sync_running = True
+        _vulnerability_sync_last_tick_at = utc_now_iso()
+        _vulnerability_sync_last_error = ""
+    try:
+        result = sync_public_vulnerability_feed(
+            limit=limit,
+            prefer_live=prefer_live,
+            refresh_normalized=False,
+        )
+        with _vulnerability_sync_lock:
+            _vulnerability_sync_last_success_at = utc_now_iso()
+            _vulnerability_sync_last_mode = str(result.get("mode") or "")
+            _vulnerability_sync_last_source = str(result.get("source") or "")
+            _vulnerability_sync_last_ingested = int(result.get("ingested") or 0)
+            _vulnerability_sync_last_error = ""
+        return result
+    except Exception as exc:
+        with _vulnerability_sync_lock:
+            _vulnerability_sync_last_error = str(exc)
+        raise
+    finally:
+        with _vulnerability_sync_lock:
+            _vulnerability_sync_running = False
+
+
+def _run_vulnerability_sync_once_in_thread(limit: int) -> None:
+    try:
+        _run_vulnerability_sync(limit=limit)
+    except Exception:
+        return
+
+
+def dispatch_run_vulnerability_sync_once(limit: int = DEFAULT_VULNERABILITY_SYNC_LIMIT) -> dict[str, Any]:
+    global _vulnerability_sync_thread
+    with _vulnerability_sync_lock:
+        if _vulnerability_sync_running:
+            return {
+                **get_vulnerability_sync_status(),
+                "message": "A vulnerability sync task is already running",
+            }
+        thread = Thread(target=_run_vulnerability_sync_once_in_thread, args=(limit,), daemon=True)
+        _vulnerability_sync_thread = thread
+        thread.start()
+    return {
+        **get_vulnerability_sync_status(),
+        "message": "Triggered a one-time vulnerability sync",
+    }
+
+
+def _vulnerability_sync_loop(stop_event: Event) -> None:
+    global _vulnerability_sync_enabled
+    while not stop_event.is_set():
+        try:
+            _run_vulnerability_sync(limit=_vulnerability_sync_limit)
+        except Exception:
+            pass
+        if stop_event.wait(_vulnerability_sync_interval_seconds):
+            break
+    _vulnerability_sync_enabled = False
+
+
+def start_vulnerability_sync_dispatch(
+    interval_seconds: int = DEFAULT_VULNERABILITY_SYNC_INTERVAL_SECONDS,
+    limit: int = DEFAULT_VULNERABILITY_SYNC_LIMIT,
+) -> dict[str, Any]:
+    global _vulnerability_sync_enabled
+    global _vulnerability_sync_started_at
+    global _vulnerability_sync_stop_event
+    global _vulnerability_sync_thread
+    global _vulnerability_sync_interval_seconds
+    global _vulnerability_sync_limit
+    if interval_seconds <= 0:
+        interval_seconds = DEFAULT_VULNERABILITY_SYNC_INTERVAL_SECONDS
+    if limit <= 0:
+        limit = DEFAULT_VULNERABILITY_SYNC_LIMIT
+    with _vulnerability_sync_lock:
+        if _vulnerability_sync_enabled and _vulnerability_sync_thread and _vulnerability_sync_thread.is_alive():
+            return {
+                **get_vulnerability_sync_status(),
+                "message": "Vulnerability auto-sync is already running",
+            }
+        stop_event = Event()
+        thread = Thread(target=_vulnerability_sync_loop, args=(stop_event,), daemon=True)
+        _vulnerability_sync_enabled = True
+        _vulnerability_sync_started_at = utc_now_iso()
+        _vulnerability_sync_interval_seconds = interval_seconds
+        _vulnerability_sync_limit = limit
+        _vulnerability_sync_stop_event = stop_event
+        _vulnerability_sync_thread = thread
+        thread.start()
+    return {
+        **get_vulnerability_sync_status(),
+        "message": "Vulnerability auto-sync started",
+    }
+
+
+def stop_vulnerability_sync_dispatch() -> dict[str, Any]:
+    global _vulnerability_sync_enabled
+    with _vulnerability_sync_lock:
+        if not _vulnerability_sync_enabled or _vulnerability_sync_stop_event is None:
+            return {
+                **get_vulnerability_sync_status(),
+                "message": "Vulnerability auto-sync is not currently running",
+            }
+        _vulnerability_sync_stop_event.set()
+        _vulnerability_sync_enabled = False
+    return {
+        **get_vulnerability_sync_status(),
+        "message": "Vulnerability auto-sync stopped",
+    }
+
+
+def get_vulnerability_sync_status() -> dict[str, Any]:
+    thread_alive = bool(_vulnerability_sync_thread and _vulnerability_sync_thread.is_alive())
+    return {
+        "enabled": bool(_vulnerability_sync_enabled and thread_alive),
+        "running": bool(_vulnerability_sync_running),
+        "started_at": _vulnerability_sync_started_at,
+        "last_tick_at": _vulnerability_sync_last_tick_at,
+        "last_success_at": _vulnerability_sync_last_success_at,
+        "last_error": _vulnerability_sync_last_error,
+        "last_mode": _vulnerability_sync_last_mode,
+        "last_source": _vulnerability_sync_last_source,
+        "last_ingested": _vulnerability_sync_last_ingested,
+        "interval_seconds": _vulnerability_sync_interval_seconds,
+        "limit": _vulnerability_sync_limit,
+    }
+
+
+def dispatch_run_ransomware_sync_once(limit: int = DEFAULT_RANSOMWARE_SYNC_LIMIT) -> dict[str, Any]:
+    from darkweb_collector.tasks import enqueue_ransomware_live_sync
+
+    job_id = enqueue_ransomware_live_sync(limit=max(0, int(limit)), force=True)
+    if not job_id:
+        return {
+            **get_ransomware_sync_status(),
+            "message": "ransomware.live A sync task is already running or waiting to run",
+        }
+    return {
+        **get_ransomware_sync_status(),
+        "message": "Triggered a one-time ransomware.live sync",
+        "job_id": job_id,
+    }
+
+
+def start_ransomware_sync_dispatch(
+    interval_seconds: int = DEFAULT_RANSOMWARE_SYNC_INTERVAL_SECONDS,
+    limit: int = DEFAULT_RANSOMWARE_SYNC_LIMIT,
+) -> dict[str, Any]:
+    if not get_ransomware_live_api_key():
+        raise RuntimeError("RANSOMWARE_LIVE_API_KEY is not set")
+    sync_config = set_ransomware_live_sync_config(
+        enabled=True,
+        interval_seconds=interval_seconds,
+        limit=limit,
+    )
+    from darkweb_collector.tasks import enqueue_ransomware_live_sync
+
+    job_id = enqueue_ransomware_live_sync(limit=int(sync_config["limit"]), force=True)
+    return {
+        **get_ransomware_sync_status(),
+        "message": "ransomware.live auto-sync started",
+        "job_id": job_id or "",
+    }
+
+
+def stop_ransomware_sync_dispatch() -> dict[str, Any]:
+    sync_config = get_ransomware_live_sync_config()
+    if not sync_config["enabled"]:
+        return {
+            **get_ransomware_sync_status(),
+            "message": "ransomware.live Auto-sync is not currently enabled",
+        }
+    set_ransomware_live_sync_config(
+        enabled=False,
+        interval_seconds=int(sync_config["interval_seconds"]),
+        limit=int(sync_config["limit"]),
+    )
+    return {
+        **get_ransomware_sync_status(),
+        "message": "Further ransomware.live auto-syncs stopped; the running task will not be forcibly interrupted",
+    }
+
+
+def get_ransomware_sync_status() -> dict[str, Any]:
+    sync_config = get_ransomware_live_sync_config()
+    snapshot = get_ransomware_live_sync_status_snapshot()
+    with get_db_connection() as connection:
+        sync_state = get_ransomware_live_sync_state(connection)
+        active_job = get_active_crawl_job(connection, "ransomware_live", "ransomware_sync")
+        latest_job = get_latest_crawl_job(connection, "ransomware_live", "ransomware_sync")
+        latest_success = get_last_successful_crawl_job(connection, "ransomware_live", "ransomware_sync")
+
+    latest_status = str((latest_job or {}).get("status") or "")
+    last_error = str(snapshot.get("last_error") or "")
+    if latest_status == "failed":
+        last_error = str((latest_job or {}).get("error_message") or last_error)
+    elif latest_status == "succeeded":
+        last_error = ""
+    if get_ransomware_live_api_key() and "RANSOMWARE_LIVE_API_KEY" in last_error and "not set" in last_error.lower():
+        last_error = ""
+    last_tick_at = str(
+        (active_job or {}).get("started_at")
+        or (active_job or {}).get("enqueued_at")
+        or snapshot.get("last_tick_at")
+        or (latest_job or {}).get("started_at")
+        or (latest_job or {}).get("enqueued_at")
+        or ""
+    )
+    last_success_at = str((latest_success or {}).get("finished_at") or snapshot.get("last_success_at") or "")
+    return {
+        "enabled": bool(sync_config["enabled"]),
+        "running": bool(active_job and active_job.get("status") == "running"),
+        "pending": bool(active_job and active_job.get("status") == "enqueued"),
+        "started_at": str(sync_config.get("started_at") or ""),
+        "last_tick_at": last_tick_at,
+        "last_success_at": last_success_at,
+        "last_error": last_error,
+        "last_source": str(snapshot.get("last_source") or ""),
+        "last_fetched": int(snapshot.get("last_fetched") or 0),
+        "last_ingested": int(snapshot.get("last_ingested") or 0),
+        "last_new": int(snapshot.get("last_new") or 0),
+        "last_updated": int(snapshot.get("last_updated") or 0),
+        "last_unchanged": int(snapshot.get("last_unchanged") or 0),
+        "interval_seconds": int(sync_config["interval_seconds"]),
+        "limit": int(sync_config["limit"]),
+        "last_job_id": str((latest_job or {}).get("job_id") or snapshot.get("last_job_id") or ""),
+        "last_job_status": latest_status,
+        "record_count": int(sync_state.get("count") or 0),
+        "latest_disclosure_time": str(sync_state.get("latest_disclosure_time") or ""),
+    }
+
+
+def _run_code_monitoring_once() -> dict[str, Any]:
+    return _run_code_monitoring_once_for_watchlist(None)
+
+
+def _resolve_code_monitoring_watchlist_name(watchlist_id: int) -> str:
+    if watchlist_id <= 0:
+        return ""
+    for item in list_code_watchlists_payload():
+        if int(item.get("id") or 0) == int(watchlist_id):
+            return str(item.get("name") or "")
+    return ""
+
+
+def _code_monitoring_task_snapshot(
+    watchlist_id: int,
+    *,
+    watchlist_name: str = "",
+    enabled: bool = False,
+    running: bool = False,
+    started_at: str = "",
+    last_tick_at: str = "",
+    last_success_at: str = "",
+    last_error: str = "",
+    interval_seconds: int = DEFAULT_CODE_MONITORING_INTERVAL_SECONDS,
+    watchlist_count: int = 0,
+    candidate_count: int = 0,
+    hit_count: int = 0,
+    clue_hit_count: int = 0,
+    sensitive_hit_count: int = 0,
+    new_primary_hit_count: int = 0,
+    new_suppressed_hit_count: int = 0,
+    updated_hit_count: int = 0,
+    new_sensitive_hit_count: int = 0,
+    new_clue_hit_count: int = 0,
+    stop_event: Event | None = None,
+    thread: Thread | None = None,
+) -> dict[str, Any]:
+    return {
+        "enabled": bool(enabled),
+        "running": bool(running),
+        "started_at": started_at,
+        "last_tick_at": last_tick_at,
+        "last_success_at": last_success_at,
+        "last_error": last_error,
+        "interval_seconds": int(interval_seconds or DEFAULT_CODE_MONITORING_INTERVAL_SECONDS),
+        "watchlist_count": int(watchlist_count or 0),
+        "candidate_count": int(candidate_count or 0),
+        "hit_count": int(hit_count or 0),
+        "clue_hit_count": int(clue_hit_count or 0),
+        "sensitive_hit_count": int(sensitive_hit_count or 0),
+        "new_primary_hit_count": int(new_primary_hit_count or 0),
+        "new_suppressed_hit_count": int(new_suppressed_hit_count or 0),
+        "updated_hit_count": int(updated_hit_count or 0),
+        "new_sensitive_hit_count": int(new_sensitive_hit_count or 0),
+        "new_clue_hit_count": int(new_clue_hit_count or 0),
+        "target_watchlist_id": int(watchlist_id or 0),
+        "target_watchlist_name": watchlist_name,
+        "stop_event": stop_event,
+        "thread": thread,
+    }
+
+
+def _active_code_monitoring_task_count() -> int:
+    return sum(
+        1
+        for task in _code_monitoring_tasks.values()
+        if bool(task.get("enabled")) and bool(task.get("thread")) and task["thread"].is_alive()
+    )
+
+
+def _code_monitoring_task_status_payload(watchlist_id: int, task: dict[str, Any] | None = None) -> dict[str, Any]:
+    task = task or _code_monitoring_tasks.get(int(watchlist_id or 0)) or _code_monitoring_task_snapshot(
+        int(watchlist_id or 0),
+        watchlist_name=_resolve_code_monitoring_watchlist_name(int(watchlist_id or 0)),
+    )
+    thread_alive = bool(task.get("thread") and task["thread"].is_alive())
+    return {
+        "enabled": bool(task.get("enabled") and thread_alive),
+        "running": bool(task.get("running")),
+        "started_at": str(task.get("started_at") or ""),
+        "last_tick_at": str(task.get("last_tick_at") or ""),
+        "last_success_at": str(task.get("last_success_at") or ""),
+        "last_error": str(task.get("last_error") or ""),
+        "interval_seconds": int(task.get("interval_seconds") or DEFAULT_CODE_MONITORING_INTERVAL_SECONDS),
+        "watchlist_count": int(task.get("watchlist_count") or 0),
+        "candidate_count": int(task.get("candidate_count") or 0),
+        "hit_count": int(task.get("hit_count") or 0),
+        "clue_hit_count": int(task.get("clue_hit_count") or 0),
+        "sensitive_hit_count": int(task.get("sensitive_hit_count") or 0),
+        "new_primary_hit_count": int(task.get("new_primary_hit_count") or 0),
+        "new_suppressed_hit_count": int(task.get("new_suppressed_hit_count") or 0),
+        "updated_hit_count": int(task.get("updated_hit_count") or 0),
+        "new_sensitive_hit_count": int(task.get("new_sensitive_hit_count") or 0),
+        "new_clue_hit_count": int(task.get("new_clue_hit_count") or 0),
+        "target_watchlist_id": int(task.get("target_watchlist_id") or 0),
+        "target_watchlist_name": str(task.get("target_watchlist_name") or ""),
+        "active_watchlist_count": _active_code_monitoring_task_count(),
+        "github_search": github_code_search_status_payload(),
+    }
+
+
+def _positive_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _remaining_interval_seconds(interval_seconds: int, loop_started_at: float) -> float:
+    elapsed_seconds = max(0.0, time.monotonic() - loop_started_at)
+    return max(0.0, float(interval_seconds) - elapsed_seconds)
+
+
+def _code_monitoring_continuous_scan_options(watchlist: dict[str, Any]) -> dict[str, Any]:
+    search_page_limit = _positive_int(watchlist.get("search_page_limit"))
+    max_results_per_term = _positive_int(watchlist.get("max_results_per_term"))
+    return {
+        "search_page_limit": search_page_limit if search_page_limit > 0 else DEFAULT_CODE_MONITORING_CONTINUOUS_SEARCH_PAGE_LIMIT,
+        "max_results_per_term": max_results_per_term if max_results_per_term > 0 else DEFAULT_CODE_MONITORING_CONTINUOUS_MAX_RESULTS_PER_TERM,
+        "detail_fetch": False,
+        "browser_fallback": False,
+    }
+
+
+def _run_code_monitoring_once_for_watchlist(watchlist_id: int | None) -> dict[str, Any]:
+    global _code_monitoring_running
+    global _code_monitoring_last_tick_at
+    global _code_monitoring_last_success_at
+    global _code_monitoring_last_error
+    global _code_monitoring_last_watchlist_count
+    global _code_monitoring_last_candidate_count
+    global _code_monitoring_last_hit_count
+    global _code_monitoring_last_clue_hit_count
+    global _code_monitoring_last_sensitive_hit_count
+    selected_watchlist_id = int(watchlist_id or 0)
+    with _code_monitoring_lock:
+        if selected_watchlist_id > 0:
+            existing_task = _code_monitoring_tasks.get(selected_watchlist_id)
+            _code_monitoring_tasks[selected_watchlist_id] = {
+                **(existing_task or _code_monitoring_task_snapshot(selected_watchlist_id, watchlist_name=_resolve_code_monitoring_watchlist_name(selected_watchlist_id))),
+                "running": True,
+                "last_tick_at": utc_now_iso(),
+                "last_error": "",
+            }
+        else:
+            _code_monitoring_running = True
+            _code_monitoring_last_tick_at = utc_now_iso()
+            _code_monitoring_last_error = ""
+    try:
+        watchlists = [item for item in list_code_watchlists_payload() if bool(item.get("enabled"))]
+        if selected_watchlist_id:
+            watchlists = [item for item in watchlists if int(item.get("id") or 0) == selected_watchlist_id]
+            if not watchlists:
+                raise ValueError(f"watchlist:{selected_watchlist_id}:not_found_or_disabled")
+        aggregate = {
+            "watchlist_count": len(watchlists),
+            "candidate_count": 0,
+            "hit_count": 0,
+            "clue_hit_count": 0,
+            "sensitive_hit_count": 0,
+            "new_primary_hit_count": 0,
+            "new_suppressed_hit_count": 0,
+            "updated_hit_count": 0,
+            "new_sensitive_hit_count": 0,
+            "new_clue_hit_count": 0,
+            "errors": [],
+            "results": [],
+        }
+        for watchlist in watchlists:
+            try:
+                scan_options = _code_monitoring_continuous_scan_options(watchlist)
+                result = scan_code_watchlist_once(
+                    int(watchlist["id"]),
+                    platforms=list(watchlist.get("platforms") or []),
+                    file_extensions=list(watchlist.get("file_extensions") or []),
+                    search_page_limit=scan_options["search_page_limit"],
+                    max_results_per_term=scan_options["max_results_per_term"],
+                    detail_fetch=scan_options["detail_fetch"],
+                    browser_fallback=scan_options["browser_fallback"],
+                    enabled_rule_keys=list(watchlist.get("enabled_rule_keys") or []),
+                )
+                aggregate["candidate_count"] += int(result.get("candidates") or 0)
+                aggregate["hit_count"] += int(result.get("hits") or 0)
+                aggregate["clue_hit_count"] += int(result.get("clue_hits") or 0)
+                aggregate["sensitive_hit_count"] += int(result.get("sensitive_hits") or 0)
+                aggregate["new_primary_hit_count"] += int(result.get("new_primary_hit_count") or 0)
+                aggregate["new_suppressed_hit_count"] += int(result.get("new_suppressed_hit_count") or 0)
+                aggregate["updated_hit_count"] += int(result.get("updated_hit_count") or 0)
+                aggregate["new_sensitive_hit_count"] += int(result.get("new_sensitive_hit_count") or 0)
+                aggregate["new_clue_hit_count"] += int(result.get("new_clue_hit_count") or 0)
+                aggregate["errors"].extend(result.get("errors") or [])
+                aggregate["results"].append(result)
+            except Exception as exc:
+                aggregate["errors"].append(f"watchlist:{watchlist.get('id')}:{exc}")
+        if aggregate["errors"] and not aggregate["results"]:
+            raise RuntimeError("; ".join(str(item) for item in aggregate["errors"][:3]))
+        with _code_monitoring_lock:
+            if selected_watchlist_id > 0:
+                existing_task = _code_monitoring_tasks.get(selected_watchlist_id) or _code_monitoring_task_snapshot(
+                    selected_watchlist_id,
+                    watchlist_name=_resolve_code_monitoring_watchlist_name(selected_watchlist_id),
+                )
+                _code_monitoring_tasks[selected_watchlist_id] = {
+                    **existing_task,
+                    "last_success_at": utc_now_iso(),
+                    "last_error": "",
+                    "watchlist_count": aggregate["watchlist_count"],
+                    "candidate_count": aggregate["candidate_count"],
+                    "hit_count": aggregate["hit_count"],
+                    "clue_hit_count": aggregate["clue_hit_count"],
+                    "sensitive_hit_count": aggregate["sensitive_hit_count"],
+                    "new_primary_hit_count": aggregate["new_primary_hit_count"],
+                    "new_suppressed_hit_count": aggregate["new_suppressed_hit_count"],
+                    "updated_hit_count": aggregate["updated_hit_count"],
+                    "new_sensitive_hit_count": aggregate["new_sensitive_hit_count"],
+                    "new_clue_hit_count": aggregate["new_clue_hit_count"],
+                }
+            else:
+                _code_monitoring_last_success_at = utc_now_iso()
+                _code_monitoring_last_watchlist_count = aggregate["watchlist_count"]
+                _code_monitoring_last_candidate_count = aggregate["candidate_count"]
+                _code_monitoring_last_hit_count = aggregate["hit_count"]
+                _code_monitoring_last_clue_hit_count = aggregate["clue_hit_count"]
+                _code_monitoring_last_sensitive_hit_count = aggregate["sensitive_hit_count"]
+                _code_monitoring_last_error = ""
+        return aggregate
+    except Exception as exc:
+        with _code_monitoring_lock:
+            if selected_watchlist_id > 0:
+                existing_task = _code_monitoring_tasks.get(selected_watchlist_id) or _code_monitoring_task_snapshot(
+                    selected_watchlist_id,
+                    watchlist_name=_resolve_code_monitoring_watchlist_name(selected_watchlist_id),
+                )
+                _code_monitoring_tasks[selected_watchlist_id] = {
+                    **existing_task,
+                    "last_error": str(exc),
+                }
+            else:
+                _code_monitoring_last_error = str(exc)
+        raise
+    finally:
+        with _code_monitoring_lock:
+            if selected_watchlist_id > 0:
+                existing_task = _code_monitoring_tasks.get(selected_watchlist_id)
+                if existing_task is not None:
+                    _code_monitoring_tasks[selected_watchlist_id] = {**existing_task, "running": False}
+            else:
+                _code_monitoring_running = False
+
+
+def _run_code_monitoring_once_in_thread(watchlist_id: int | None = None) -> None:
+    try:
+        _run_code_monitoring_once_for_watchlist(watchlist_id)
+    except Exception:
+        return
+
+
+def dispatch_run_code_monitoring_once() -> dict[str, Any]:
+    global _code_monitoring_thread
+    with _code_monitoring_lock:
+        if _code_monitoring_running:
+            return {
+                **get_code_monitoring_continuous_status(),
+                "message": "A code monitoring task is already running",
+            }
+        thread = Thread(target=_run_code_monitoring_once_in_thread, daemon=True)
+        _code_monitoring_thread = thread
+        thread.start()
+    return {
+        **get_code_monitoring_continuous_status(),
+        "message": "Triggered a one-time continuous code monitoring scan",
+    }
+
+
+def _code_monitoring_loop(watchlist_id: int, stop_event: Event) -> None:
+    while not stop_event.is_set():
+        loop_started_at = time.monotonic()
+        try:
+            _run_code_monitoring_once_for_watchlist(watchlist_id)
+        except Exception:
+            pass
+        with _code_monitoring_lock:
+            task = _code_monitoring_tasks.get(watchlist_id) or {}
+            interval_seconds = int(task.get("interval_seconds") or DEFAULT_CODE_MONITORING_INTERVAL_SECONDS)
+        if stop_event.wait(_remaining_interval_seconds(interval_seconds, loop_started_at)):
+            break
+    with _code_monitoring_lock:
+        task = _code_monitoring_tasks.get(watchlist_id)
+        if task is not None:
+            _code_monitoring_tasks[watchlist_id] = {**task, "enabled": False, "running": False, "stop_event": None}
+
+
+def start_code_monitoring_dispatch(
+    interval_seconds: int = DEFAULT_CODE_MONITORING_INTERVAL_SECONDS,
+    *,
+    watchlist_id: int | None = None,
+) -> dict[str, Any]:
+    if interval_seconds <= 0:
+        interval_seconds = DEFAULT_CODE_MONITORING_INTERVAL_SECONDS
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id <= 0:
+        raise ValueError("watchlist_id is required for code monitoring continuous scan")
+    target_watchlist_name = ""
+    enabled_watchlists = [item for item in list_code_watchlists_payload() if bool(item.get("enabled"))]
+    target_watchlist = next((item for item in enabled_watchlists if int(item.get("id") or 0) == selected_watchlist_id), None)
+    if target_watchlist is None:
+        raise ValueError(f"watchlist not found or disabled: {selected_watchlist_id}")
+    target_watchlist_name = str(target_watchlist.get("name") or "")
+    with _code_monitoring_lock:
+        existing_task = _code_monitoring_tasks.get(selected_watchlist_id)
+        if existing_task and bool(existing_task.get("enabled")) and bool(existing_task.get("thread")) and existing_task["thread"].is_alive():
+            _code_monitoring_tasks[selected_watchlist_id] = {
+                **existing_task,
+                "interval_seconds": interval_seconds,
+                "target_watchlist_name": target_watchlist_name,
+            }
+            return {
+                **_code_monitoring_task_status_payload(selected_watchlist_id),
+                "message": "The long-running task for this monitoring target is already running",
+            }
+        stop_event = Event()
+        thread = Thread(target=_code_monitoring_loop, args=(selected_watchlist_id, stop_event), daemon=True)
+        _code_monitoring_tasks[selected_watchlist_id] = {
+            **(existing_task or _code_monitoring_task_snapshot(selected_watchlist_id, watchlist_name=target_watchlist_name)),
+            "enabled": True,
+            "running": False,
+            "started_at": utc_now_iso(),
+            "last_tick_at": "",
+            "last_error": "",
+            "interval_seconds": interval_seconds,
+            "target_watchlist_id": selected_watchlist_id,
+            "target_watchlist_name": target_watchlist_name,
+            "stop_event": stop_event,
+            "thread": thread,
+        }
+        thread.start()
+    return {
+        **_code_monitoring_task_status_payload(selected_watchlist_id),
+        "message": "Long-running background code scan enabled for this monitoring target",
+    }
+
+
+def stop_code_monitoring_dispatch(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id <= 0:
+        raise ValueError("watchlist_id is required for code monitoring continuous stop")
+    with _code_monitoring_lock:
+        existing_task = _code_monitoring_tasks.get(selected_watchlist_id)
+        if existing_task is None or not bool(existing_task.get("enabled")) or existing_task.get("stop_event") is None:
+            return {
+                **_code_monitoring_task_status_payload(selected_watchlist_id),
+                "message": "The long-running task for this monitoring target is not currently running",
+            }
+        stop_event = existing_task.get("stop_event")
+        if stop_event is not None:
+            stop_event.set()
+        _code_monitoring_tasks[selected_watchlist_id] = {
+            **existing_task,
+            "enabled": False,
+        }
+    return {
+        **_code_monitoring_task_status_payload(selected_watchlist_id),
+        "message": "Long-running background code scan stopped for this monitoring target",
+    }
+
+
+def get_code_monitoring_continuous_status(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id > 0:
+        with _code_monitoring_lock:
+            task = _code_monitoring_tasks.get(selected_watchlist_id)
+            return _code_monitoring_task_status_payload(selected_watchlist_id, task)
+    with _code_monitoring_lock:
+        active_tasks = [
+            task for task in _code_monitoring_tasks.values()
+            if bool(task.get("enabled")) and bool(task.get("thread")) and task["thread"].is_alive()
+        ]
+        if active_tasks:
+            task = sorted(active_tasks, key=lambda item: str(item.get("started_at") or ""), reverse=True)[0]
+            payload = _code_monitoring_task_status_payload(int(task.get("target_watchlist_id") or 0), task)
+            payload["target_watchlist_name"] = task.get("target_watchlist_name") or "Multiple monitoring targets"
+            return payload
+    return _code_monitoring_task_status_payload(0)
+
+
+def _run_netdisk_monitoring_once() -> dict[str, Any]:
+    return _run_netdisk_monitoring_once_for_watchlist(None)
+
+
+def _netdisk_watchlist_source_families(watchlist: dict[str, Any]) -> list[str]:
+    families = watchlist.get("source_families")
+    if not isinstance(families, list):
+        return []
+    return [str(item) for item in families if str(item)]
+
+
+def _is_netdisk_monitoring_watchlist(watchlist: dict[str, Any]) -> bool:
+    families = _netdisk_watchlist_source_families(watchlist)
+    return not families or "netdisk_aggregator" in families
+
+
+def _enabled_netdisk_monitoring_watchlists() -> list[dict[str, Any]]:
+    return [
+        item
+        for item in list_watchlists_payload()
+        if bool(item.get("enabled")) and _is_netdisk_monitoring_watchlist(item)
+    ]
+
+
+def _resolve_netdisk_monitoring_watchlist_name(watchlist_id: int) -> str:
+    if watchlist_id <= 0:
+        return ""
+    for item in list_watchlists_payload():
+        if int(item.get("id") or 0) == int(watchlist_id):
+            return str(item.get("name") or "")
+    return ""
+
+
+def _netdisk_monitoring_task_snapshot(
+    watchlist_id: int,
+    *,
+    watchlist_name: str = "",
+    enabled: bool = False,
+    running: bool = False,
+    started_at: str = "",
+    last_tick_at: str = "",
+    last_success_at: str = "",
+    last_error: str = "",
+    interval_seconds: int = DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS,
+    watchlist_count: int = 0,
+    candidate_count: int = 0,
+    hit_count: int = 0,
+    error_count: int = 0,
+    stop_event: Event | None = None,
+    thread: Thread | None = None,
+) -> dict[str, Any]:
+    return {
+        "enabled": bool(enabled),
+        "running": bool(running),
+        "stopping": False,
+        "source_families": ["netdisk_aggregator"],
+        "file_types": None,
+        "detail_fetch": None,
+        "document_library_candidate_limit": None,
+        "running_source_families": [],
+        "started_at": started_at,
+        "last_tick_at": last_tick_at,
+        "last_success_at": last_success_at,
+        "last_error": last_error,
+        "interval_seconds": int(interval_seconds or DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS),
+        "watchlist_count": int(watchlist_count or 0),
+        "candidate_count": int(candidate_count or 0),
+        "hit_count": int(hit_count or 0),
+        "error_count": int(error_count or 0),
+        "target_watchlist_id": int(watchlist_id or 0),
+        "target_watchlist_name": watchlist_name,
+        "stop_event": stop_event,
+        "wake_event": None,
+        "thread": thread,
+    }
+
+
+def _active_netdisk_monitoring_task_count() -> int:
+    return sum(
+        1
+        for task in _netdisk_monitoring_tasks.values()
+        if bool(task.get("thread")) and task["thread"].is_alive()
+    )
+
+
+def _netdisk_monitoring_task_status_payload(watchlist_id: int, task: dict[str, Any] | None = None) -> dict[str, Any]:
+    task = task or _netdisk_monitoring_tasks.get(int(watchlist_id or 0))
+    if task is None:
+        task = _netdisk_monitoring_task_snapshot(
+            int(watchlist_id or 0), watchlist_name=_resolve_netdisk_monitoring_watchlist_name(int(watchlist_id or 0)),
+        )
+        task["source_families"] = []
+    thread_alive = bool(task.get("thread") and task["thread"].is_alive())
+    return {
+        "enabled": bool(task.get("enabled") and thread_alive),
+        "running": bool(task.get("running")),
+        "stopping": bool(task.get("stopping") and thread_alive),
+        "source_families": list(task.get("source_families") or []),
+        "file_types": list(task["file_types"]) if task.get("file_types") is not None else None,
+        "detail_fetch": task.get("detail_fetch"),
+        "document_library_candidate_limit": task.get("document_library_candidate_limit"),
+        "running_source_families": list(task.get("running_source_families") or []),
+        "started_at": str(task.get("started_at") or ""),
+        "last_tick_at": str(task.get("last_tick_at") or ""),
+        "last_success_at": str(task.get("last_success_at") or ""),
+        "last_error": str(task.get("last_error") or ""),
+        "interval_seconds": int(task.get("interval_seconds") or DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS),
+        "watchlist_count": int(task.get("watchlist_count") or 0),
+        "candidate_count": int(task.get("candidate_count") or 0),
+        "hit_count": int(task.get("hit_count") or 0),
+        "error_count": int(task.get("error_count") or 0),
+        "target_watchlist_id": int(task.get("target_watchlist_id") or 0),
+        "target_watchlist_name": str(task.get("target_watchlist_name") or ""),
+        "active_watchlist_count": _active_netdisk_monitoring_task_count(),
+    }
+
+
+def _document_exposure_monitoring_watchlist(watchlist_id: int, source_families=None):
+    watchlist = next((item for item in list_watchlists_payload() if int(item.get("id") or 0) == watchlist_id), None)
+    if watchlist is None or not watchlist.get("enabled"):
+        raise ValueError(f"monitoring object not found or disabled: {watchlist_id}")
+    metadata = _exposure_watchlist_metadata(watchlist)
+    saved_sources = metadata.get("source_families", _netdisk_watchlist_source_families(watchlist))
+    configured = [value for value in saved_sources if isinstance(value, str) and value in SUPPORTED_SOURCE_FAMILIES] if isinstance(saved_sources, list) else []
+    selected = configured if source_families is None else source_families
+    if not isinstance(selected, list) or not selected or any(not isinstance(value, str) or value not in SUPPORTED_SOURCE_FAMILIES for value in selected):
+        raise ValueError("source_families must select supported document monitoring sources")
+    selected = list(dict.fromkeys(selected))
+    if any(value not in configured for value in selected):
+        raise ValueError("selected monitoring source is not enabled for this object")
+    if not any(isinstance(term, dict) and term.get("enabled", True) and str(term.get("term") or "").strip()
+               for term in watchlist.get("derived_terms") or []):
+        raise ValueError("monitoring object has no effective enterprise search terms")
+    return watchlist, selected
+
+
+def _run_document_exposure_monitoring_tick(watchlist_id: int, *, task=None, scan_options=None):
+    with _netdisk_monitoring_lock:
+        current = _netdisk_monitoring_tasks.get(watchlist_id)
+        if task is not None and (current is not task or not task.get("enabled") or task["stop_event"].is_set()):
+            return None
+        if current is not None and (current.get("running") or current.get("stopping")):
+            return None
+        task = current or _netdisk_monitoring_task_snapshot(watchlist_id)
+        _netdisk_monitoring_tasks[watchlist_id] = task
+        options = dict(scan_options) if scan_options is not None else {
+            key: task.get(key) for key in ("source_families", "file_types", "detail_fetch", "document_library_candidate_limit")
+        }
+        options["source_families"] = list(options["source_families"])
+        if options.get("file_types") is not None:
+            options["file_types"] = list(options["file_types"])
+        task.update(running=True, running_source_families=list(options["source_families"]),
+                    last_tick_at=utc_now_iso(), last_error="")
+    try:
+        watchlist, _ = _document_exposure_monitoring_watchlist(watchlist_id, options["source_families"])
+        result = scan_watchlist_once(watchlist_id, **options)
+        errors = list(result.get("errors") or [])
+        with _netdisk_monitoring_lock:
+            if _netdisk_monitoring_tasks.get(watchlist_id) is task:
+                task.update(target_watchlist_name=str(watchlist.get("name") or ""),
+                            watchlist_count=1, candidate_count=int(result.get("candidates") or 0),
+                            hit_count=int(result.get("hits") or 0), error_count=len(errors),
+                            last_error="; ".join(str(value) for value in errors[:3]), last_success_at=utc_now_iso())
+        return result
+    except Exception as exc:
+        with _netdisk_monitoring_lock:
+            if _netdisk_monitoring_tasks.get(watchlist_id) is task:
+                task.update(last_error=str(exc), watchlist_count=0, candidate_count=0, hit_count=0, error_count=1)
+        raise
+    finally:
+        with _netdisk_monitoring_lock:
+            if _netdisk_monitoring_tasks.get(watchlist_id) is task:
+                task.update(running=False, running_source_families=[])
+
+
+def _run_netdisk_monitoring_once_for_watchlist(watchlist_id: int | None) -> dict[str, Any]:
+    global _netdisk_monitoring_once_running
+    selected_watchlist_id = int(watchlist_id or 0)
+    with _netdisk_monitoring_lock:
+        if not selected_watchlist_id:
+            _netdisk_monitoring_once_running = True
+    try:
+        watchlists = _enabled_netdisk_monitoring_watchlists()
+        if selected_watchlist_id:
+            watchlists = [item for item in watchlists if int(item.get("id") or 0) == selected_watchlist_id]
+            if not watchlists:
+                raise ValueError(f"watchlist:{selected_watchlist_id}:not_found_disabled_or_not_netdisk")
+        aggregate = {
+            "watchlist_count": len(watchlists),
+            "candidate_count": 0,
+            "hit_count": 0,
+            "error_count": 0,
+            "errors": [],
+            "results": [],
+        }
+        for watchlist in watchlists:
+            try:
+                result = _run_document_exposure_monitoring_tick(
+                    int(watchlist["id"]), scan_options={"source_families": ["netdisk_aggregator"]},
+                )
+                if result is None:
+                    continue
+                errors = list(result.get("errors") or [])
+                aggregate["candidate_count"] += int(result.get("candidates") or 0)
+                aggregate["hit_count"] += int(result.get("hits") or 0)
+                aggregate["error_count"] += len(errors)
+                aggregate["errors"].extend(errors)
+                aggregate["results"].append(result)
+            except Exception as exc:
+                aggregate["error_count"] += 1
+                aggregate["errors"].append(f"watchlist:{watchlist.get('id')}:{exc}")
+        return aggregate
+    finally:
+        with _netdisk_monitoring_lock:
+            if not selected_watchlist_id:
+                _netdisk_monitoring_once_running = False
+
+
+def _run_netdisk_monitoring_once_in_thread(watchlist_id: int | None = None) -> None:
+    try:
+        _run_netdisk_monitoring_once_for_watchlist(watchlist_id)
+    except Exception:
+        return
+
+
+def dispatch_run_netdisk_monitoring_once() -> dict[str, Any]:
+    global _netdisk_monitoring_once_running
+    global _netdisk_monitoring_once_thread
+    with _netdisk_monitoring_lock:
+        if _netdisk_monitoring_once_running:
+            return {
+                **_netdisk_monitoring_task_status_payload(0),
+                "message": "A netdisk monitoring task is already running",
+            }
+        thread = Thread(target=_run_netdisk_monitoring_once_in_thread, daemon=True)
+        _netdisk_monitoring_once_running = True
+        _netdisk_monitoring_once_thread = thread
+        thread.start()
+        payload = _netdisk_monitoring_task_status_payload(0)
+    return {
+        **payload,
+        "message": "Triggered a one-time continuous netdisk monitoring scan",
+    }
+
+
+def _netdisk_monitoring_loop(watchlist_id: int, stop_event: Event) -> None:
+    with _netdisk_monitoring_lock:
+        task = _netdisk_monitoring_tasks.get(watchlist_id)
+        if task is None or task.get("stop_event") is not stop_event:
+            return
+        wake_event = task["wake_event"]
+    try:
+        while not stop_event.is_set():
+            loop_started_at = time.monotonic()
+            try:
+                _run_document_exposure_monitoring_tick(watchlist_id, task=task)
+            except Exception:
+                pass
+            while not stop_event.is_set():
+                with _netdisk_monitoring_lock:
+                    if _netdisk_monitoring_tasks.get(watchlist_id) is not task:
+                        return
+                    wake_event.clear()
+                    interval_seconds = task["interval_seconds"]
+                remaining = _remaining_interval_seconds(interval_seconds, loop_started_at)
+                if stop_event.is_set() or remaining <= 0:
+                    break
+                wake_event.wait(remaining)
+    finally:
+        with _netdisk_monitoring_lock:
+            if _netdisk_monitoring_tasks.get(watchlist_id) is task:
+                task.update(enabled=False, running=False, stopping=False, running_source_families=[],
+                            stop_event=None, wake_event=None)
+
+
+def start_document_exposure_monitoring_dispatch(
+    interval_seconds: int = DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS,
+    *,
+    watchlist_id: int | None = None,
+    source_families: list[str] | None = None,
+    file_types: list[str] | None = None,
+    detail_fetch: bool | None = None,
+    document_library_candidate_limit: int | None = None,
+) -> dict[str, Any]:
+    if isinstance(interval_seconds, bool) or not isinstance(interval_seconds, int) or interval_seconds <= 0:
+        raise ValueError("interval_seconds must be a positive integer")
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id <= 0:
+        raise ValueError("watchlist_id is required for document monitoring continuous scan")
+    if file_types is not None:
+        if not isinstance(file_types, list) or not file_types or any(not isinstance(value, str) or not value.strip().lstrip(".") for value in file_types):
+            raise ValueError("file_types must be a non-empty list when provided")
+        file_types = list(dict.fromkeys(value.strip().lower().lstrip(".") for value in file_types))
+    if detail_fetch is not None and not isinstance(detail_fetch, bool):
+        raise ValueError("detail_fetch must be a boolean when provided")
+    if document_library_candidate_limit is not None and (
+        isinstance(document_library_candidate_limit, bool) or not isinstance(document_library_candidate_limit, int)
+        or not 1 <= document_library_candidate_limit <= 200
+    ):
+        raise ValueError("document_library_candidate_limit must be between 1 and 200")
+    target_watchlist, source_families = _document_exposure_monitoring_watchlist(selected_watchlist_id, source_families)
+    target_watchlist_name = str(target_watchlist.get("name") or "")
+    options = {"source_families": list(source_families), "file_types": file_types,
+               "detail_fetch": detail_fetch, "document_library_candidate_limit": document_library_candidate_limit}
+    with _netdisk_monitoring_lock:
+        existing_task = _netdisk_monitoring_tasks.get(selected_watchlist_id)
+        if existing_task and existing_task.get("thread") and existing_task["thread"].is_alive():
+            if not existing_task.get("enabled") or existing_task.get("stopping"):
+                raise ValueError("previous document monitoring task is still stopping")
+            existing_task.update(**options, interval_seconds=interval_seconds, target_watchlist_name=target_watchlist_name)
+            existing_task["wake_event"].set()
+            return {
+                **_netdisk_monitoring_task_status_payload(selected_watchlist_id),
+                "message": "Updated the long-running scan configuration for this monitoring target; the new scope applies after the current round ends",
+            }
+        if existing_task and existing_task.get("running"):
+            raise ValueError("previous document monitoring scan is still running")
+        stop_event = Event()
+        wake_event = Event()
+        thread = Thread(target=_netdisk_monitoring_loop, args=(selected_watchlist_id, stop_event), daemon=True,
+                        name=f"document-exposure-{selected_watchlist_id}")
+        task = {
+            **(existing_task or _netdisk_monitoring_task_snapshot(selected_watchlist_id, watchlist_name=target_watchlist_name)),
+            **options,
+            "enabled": True,
+            "running": False,
+            "stopping": False,
+            "running_source_families": [],
+            "started_at": utc_now_iso(),
+            "last_tick_at": "",
+            "last_error": "",
+            "interval_seconds": interval_seconds,
+            "target_watchlist_id": selected_watchlist_id,
+            "target_watchlist_name": target_watchlist_name,
+            "stop_event": stop_event,
+            "wake_event": wake_event,
+            "thread": thread,
+        }
+        _netdisk_monitoring_tasks[selected_watchlist_id] = task
+        try:
+            thread.start()
+        except Exception:
+            task.update(enabled=False, stopping=False, thread=None, stop_event=None, wake_event=None)
+            raise
+        payload = _netdisk_monitoring_task_status_payload(selected_watchlist_id)
+    return {
+        **payload,
+        "message": "Long-running background document scan enabled for this monitoring target",
+    }
+
+
+def stop_document_exposure_monitoring_dispatch(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id <= 0:
+        raise ValueError("watchlist_id is required for document monitoring continuous stop")
+    with _netdisk_monitoring_lock:
+        existing_task = _netdisk_monitoring_tasks.get(selected_watchlist_id)
+        if existing_task is None or existing_task.get("stop_event") is None:
+            return {
+                **_netdisk_monitoring_task_status_payload(selected_watchlist_id),
+                "message": "The long-running task for this monitoring target is not currently running",
+            }
+        stop_event = existing_task.get("stop_event")
+        if stop_event is not None:
+            stop_event.set()
+        existing_task.update(enabled=False, stopping=bool(existing_task.get("thread") and existing_task["thread"].is_alive()))
+        if existing_task.get("wake_event") is not None:
+            existing_task["wake_event"].set()
+        payload = _netdisk_monitoring_task_status_payload(selected_watchlist_id)
+    return {
+        **payload,
+        "message": "Further scans stopped; it will exit after the current round completes",
+    }
+
+
+def get_document_exposure_monitoring_continuous_status(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    selected_watchlist_id = int(watchlist_id or 0)
+    if selected_watchlist_id > 0:
+        with _netdisk_monitoring_lock:
+            task = _netdisk_monitoring_tasks.get(selected_watchlist_id)
+            return _netdisk_monitoring_task_status_payload(selected_watchlist_id, task)
+    with _netdisk_monitoring_lock:
+        active_tasks = [
+            task for task in _netdisk_monitoring_tasks.values()
+            if bool(task.get("thread")) and task["thread"].is_alive()
+        ]
+        if active_tasks:
+            task = sorted(active_tasks, key=lambda item: str(item.get("started_at") or ""), reverse=True)[0]
+            payload = _netdisk_monitoring_task_status_payload(int(task.get("target_watchlist_id") or 0), task)
+            payload["target_watchlist_name"] = task.get("target_watchlist_name") or "Multiple monitoring targets"
+            return payload
+        return _netdisk_monitoring_task_status_payload(0)
+
+
+def start_netdisk_monitoring_dispatch(
+    interval_seconds: int = DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS,
+    *, watchlist_id: int | None = None,
+) -> dict[str, Any]:
+    return start_document_exposure_monitoring_dispatch(
+        interval_seconds if interval_seconds > 0 else DEFAULT_NETDISK_MONITORING_INTERVAL_SECONDS,
+        watchlist_id=watchlist_id, source_families=["netdisk_aggregator"],
+    )
+
+
+def stop_netdisk_monitoring_dispatch(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    return stop_document_exposure_monitoring_dispatch(watchlist_id=watchlist_id)
+
+
+def get_netdisk_monitoring_continuous_status(*, watchlist_id: int | None = None) -> dict[str, Any]:
+    return get_document_exposure_monitoring_continuous_status(watchlist_id=watchlist_id)
+
+
+def update_site_enabled(site_name: str, enabled: bool) -> dict[str, Any]:
+    config = set_site_enabled(site_name=site_name, enabled=enabled)
+    return {
+        "site_name": config.site_name,
+        "enabled": config.enabled,
+        "message": "Site collection enabled" if config.enabled else "Site collection disabled",
+    }

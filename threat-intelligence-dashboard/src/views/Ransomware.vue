@@ -1,0 +1,275 @@
+<template>
+  <div class="ransomware-page ti-page">
+    <section class="ti-panel ti-reveal-up">
+      <div class="summary-grid">
+        <ModuleSummaryCard
+          v-for="card in visibleRansomwareSummary"
+          :key="card.label"
+          v-bind="card"
+        />
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <div class="ti-card ti-reveal-up">
+        <div class="ti-card-body">
+          <EventTableToolbar
+            eyebrow="Event table"
+            title="Ransomware Event List"
+            description="This page focuses on the list of disclosed events and keeps only the more stable factual fields; trend and ranking charts have been consolidated on the Threat Situation page."
+            :search-value="searchValue"
+            search-placeholder="Search titles, threat actors, regions"
+            :active-filters="activeFilters"
+            @update:search-value="searchValue = $event"
+          >
+            <template #filters>
+              <el-select v-model="categoryFilter" placeholder="Event category" style="width: 160px" clearable>
+                <el-option v-for="item in categoryOptions" :key="item" :label="item" :value="item" />
+              </el-select>
+            </template>
+
+            <template #actions>
+              <el-button plain>Export</el-button>
+            </template>
+          </EventTableToolbar>
+
+          <div class="ti-table-shell table-shell">
+            <el-table class="event-table" :data="pagedEvents" style="width: 100%" table-layout="fixed">
+              <el-table-column prop="disclosureDate" label="Disclosure date" :width="dateColumnWidth" />
+              <el-table-column v-if="showUpdatedColumn" prop="updatedTime" label="Last updated" :width="updatedColumnWidth" />
+              <el-table-column prop="title" label="Title" :min-width="titleColumnMinWidth" show-overflow-tooltip />
+              <el-table-column v-if="showCategoryColumn" prop="category" label="Event category" :width="categoryColumnWidth" />
+              <el-table-column prop="attacker" label="Threat actor" :width="attackerColumnWidth" show-overflow-tooltip />
+              <el-table-column v-if="showIndustryColumn" prop="industry" label="Industry" :width="industryColumnWidth" />
+              <el-table-column v-if="showRegionColumn" prop="region" label="Victim countries and regions" :width="regionColumnWidth" show-overflow-tooltip />
+              <el-table-column label="View" :width="actionColumnWidth">
+                <template #default="{ row }">
+                  <el-button size="small" type="primary" @click="viewEventDetail(row)">View</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <div class="table-footer">
+            <div class="table-footer__note">{{ filteredEvents.length }} events in total; chart trends have moved to the Threat Situation page.</div>
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="filteredEvents.length"
+              layout="total, sizes, prev, pager, next"
+              background
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import EventTableToolbar from '@/components/common/EventTableToolbar.vue'
+import ModuleSummaryCard from '@/components/common/ModuleSummaryCard.vue'
+import { useIntelligenceData } from '@/composables/useIntelligenceData'
+
+const DETAIL_CACHE_VERSION = '2026-04-09-rich-detail-v4'
+
+const { data, refresh: refreshIntelligence } = useIntelligenceData()
+const ransomwareEvents = computed(() => data.value.ransomwareEvents || [])
+const ransomwareSummary = computed(() => data.value.ransomwareSummary || [])
+const visibleRansomwareSummary = computed(() =>
+  ransomwareSummary.value.filter((card) => card?.label !== 'Failed tasks')
+)
+const route = useRoute()
+const router = useRouter()
+
+const currentPage = ref(1)
+const pageSize = ref(10)
+const categoryFilter = ref('')
+const searchValue = ref('')
+const viewportWidth = ref(typeof window === 'undefined' ? 1440 : window.innerWidth)
+const listStateKey = computed(() => `list-state:${route.path}`)
+let refreshTimer = null
+
+const showRegionColumn = computed(() => viewportWidth.value >= 1880)
+const showUpdatedColumn = computed(() => viewportWidth.value >= 1400)
+const showCategoryColumn = computed(() => viewportWidth.value >= 1180)
+const showIndustryColumn = computed(() => viewportWidth.value >= 1180)
+const compactTable = computed(() => viewportWidth.value < 1400)
+const narrowTable = computed(() => viewportWidth.value < 1180)
+const dateColumnWidth = computed(() => (narrowTable.value ? 96 : compactTable.value ? 108 : 122))
+const updatedColumnWidth = computed(() => (compactTable.value ? 132 : 150))
+const titleColumnMinWidth = computed(() => (narrowTable.value ? 180 : compactTable.value ? 240 : showRegionColumn.value ? 360 : 300))
+const categoryColumnWidth = computed(() => (compactTable.value ? 104 : 120))
+const attackerColumnWidth = computed(() => (narrowTable.value ? 108 : compactTable.value ? 120 : 136))
+const industryColumnWidth = computed(() => (compactTable.value ? 88 : 104))
+const regionColumnWidth = computed(() => (showRegionColumn.value ? 180 : 0))
+const actionColumnWidth = computed(() => (narrowTable.value ? 76 : 82))
+
+const categoryOptions = computed(() => [...new Set(ransomwareEvents.value.map((item) => item.category))])
+
+function parseDisclosureTime(value) {
+  if (!value) return Number.NEGATIVE_INFINITY
+  const normalized = String(value).trim().replace(' ', 'T')
+  const parsed = Date.parse(normalized)
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+}
+
+const sortedEvents = computed(() => {
+  return [...ransomwareEvents.value].sort((left, right) => {
+    return parseDisclosureTime(right.disclosureTimeRaw || right.disclosureTime || right.updatedTimeRaw || right.updatedTime) - parseDisclosureTime(left.disclosureTimeRaw || left.disclosureTime || left.updatedTimeRaw || left.updatedTime)
+  })
+})
+
+const filteredEvents = computed(() => {
+  return sortedEvents.value.filter((item) => {
+    const matchesCategory = !categoryFilter.value || item.category === categoryFilter.value
+    const keyword = searchValue.value.trim().toLowerCase()
+    const matchesKeyword =
+      !keyword ||
+      [item.title, item.originalTitle, item.attacker, item.region].some((field) => String(field || '').toLowerCase().includes(keyword))
+
+    return matchesCategory && matchesKeyword
+  })
+})
+
+const pagedEvents = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredEvents.value.slice(start, start + pageSize.value)
+})
+
+function viewEventDetail(row) {
+  if (!row?.id) return
+  sessionStorage.setItem(
+    listStateKey.value,
+    JSON.stringify({
+      currentPage: currentPage.value,
+      pageSize: pageSize.value,
+      categoryFilter: categoryFilter.value,
+      searchValue: searchValue.value,
+    })
+  )
+  sessionStorage.setItem(`event-back:${row.id}`, '/ransomware')
+  router.push({ name: 'EventDetail', params: { eventId: row.id } })
+}
+
+function updateViewportWidth() {
+  viewportWidth.value = window.innerWidth
+}
+
+const activeFilters = computed(() => {
+  const filters = []
+
+  if (categoryFilter.value) {
+    filters.push(`Category: ${categoryFilter.value}`)
+  }
+
+  if (searchValue.value.trim()) {
+    filters.push(`Keyword: ${searchValue.value.trim()}`)
+  }
+
+  return filters
+})
+
+watch([filteredEvents, pageSize], () => {
+  const maxPage = Math.max(1, Math.ceil(filteredEvents.value.length / pageSize.value))
+  if (currentPage.value > maxPage) {
+    currentPage.value = maxPage
+  }
+  if (currentPage.value < 1) {
+    currentPage.value = 1
+  }
+})
+
+onMounted(() => {
+  refreshIntelligence()
+  updateViewportWidth()
+  window.addEventListener('resize', updateViewportWidth)
+  const raw = sessionStorage.getItem(listStateKey.value)
+  if (raw) {
+    try {
+      const payload = JSON.parse(raw)
+      currentPage.value = Number(payload.currentPage) || 1
+      pageSize.value = Number(payload.pageSize) || 10
+      categoryFilter.value = String(payload.categoryFilter || '')
+      searchValue.value = String(payload.searchValue || '')
+    } catch {
+      sessionStorage.removeItem(listStateKey.value)
+    }
+  }
+  refreshTimer = window.setInterval(() => {
+    refreshIntelligence()
+  }, 15000)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateViewportWidth)
+  if (refreshTimer) {
+    window.clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
+</script>
+
+<style scoped lang="scss">
+.ransomware-page,
+.summary-grid,
+.content-grid {
+  min-width: 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 22px;
+}
+
+.table-shell {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 18px;
+}
+
+.event-table {
+  width: 100%;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.table-footer__note {
+  color: var(--ti-text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 1440px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+</style>

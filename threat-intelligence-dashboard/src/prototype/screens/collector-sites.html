@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site Management · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-collector page-collector-sites">
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="collector-sites-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation" data-od-id="collector-sites-nav"><a class="nav-link active" href="collector-sites.html">Site Management</a></nav>
+      <div class="sidebar-footer"></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+    <div class="app-stage">
+      <header class="app-header" data-od-id="collector-sites-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="header-actions"><span class="app-version" data-od-id="collector-sites-version">Version <strong>v20260901.1.0</strong></span><button class="avatar" type="button" aria-label="Personal account" data-od-id="collector-sites-account"></button></div>
+      </header>
+
+      <main class="app-main collector-main collector-page" id="content" data-collector-surface data-needs-jobs data-needs-platform-access data-od-id="collector-sites-main">
+        <nav class="collector-overview-navigation" aria-label="Collection pages">
+          <a href="/collector-control/overview">Overview</a>
+          <a href="/collector-control/sites" aria-current="page">Site status</a>
+          <a href="/collector-control/tasks">Task History</a>
+        </nav>
+        <section class="section collector-site-nav-section" data-od-id="collector-sites-navigation">
+          <div class="tabs settings-tabs collector-site-tabs" data-panels="collector-sites" role="tablist" aria-label="Site management pages">
+            <button class="tab active" data-tab="sites" role="tab" aria-selected="true" data-od-id="collector-sites-tab-sites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19h14M8 16h8M12 5v11M7 10l5-5 5 5"/></svg><span>Site Runtime</span></button>
+            <button class="tab" data-tab="access" role="tab" aria-selected="false" data-od-id="collector-sites-tab-access"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8m-6-4V5m4 3V5M7 12v2a5 5 0 0 0 10 0v-2M12 19v2"/></svg><span>Platform Onboarding</span></button>
+          </div>
+        </section>
+
+        <section class="collector-sites-panel" data-panel-group="collector-sites" data-panel="sites">
+        <section class="site-command-strip" data-od-id="collector-sites-summary">
+          <div class="site-health-overview">
+            <span>Overall status</span>
+            <strong data-bind="site-health-summary">Partially failed</strong>
+            <div class="site-health-track" aria-label="Site health ratio">
+              <i class="healthy" data-site-health-segment="healthy" style="--site-share: 50%"></i>
+              <i class="abnormal" data-site-health-segment="abnormal" style="--site-share: 50%"></i>
+            </div>
+          </div>
+          <dl class="site-metric-line">
+            <div><dt>All sites</dt><dd class="num" data-bind="site-total">4</dd></div>
+            <div><dt>Healthy</dt><dd class="num success-value" data-bind="site-healthy">2</dd></div>
+            <div><dt>Error</dt><dd class="num warning-value" data-bind="site-abnormal">2</dd></div>
+            <div><dt>Login required</dt><dd class="num" data-bind="site-auth">0</dd></div>
+            <div><dt>Circuit open</dt><dd class="num danger-value" data-bind="site-circuit">2</dd></div>
+          </dl>
+        </section>
+
+        <section class="site-workbench" data-od-id="collector-sites-table-section">
+          <header class="site-workbench-toolbar">
+            <div class="site-workbench-title"><strong>Site run matrix</strong><span><b class="num" data-table-count="collector-health-table">4</b>  sites</span></div>
+            <div class="collector-filter-row">
+              <label class="compact-search"><span class="sr-only">Search sites</span><input class="input" type="search" placeholder="Search sites" data-table-search="collector-health-table"></label>
+              <select class="select" aria-label="Filter by business type" data-filter-target="collector-health-table" data-filter-key="module"><option value="">All businesses</option><option value="darkweb">Dark web sites</option><option value="netdisk">Netdisk sources</option><option value="library">Library sources</option></select>
+              <select class="select" aria-label="Filter by status" data-filter-target="collector-health-table" data-filter-key="status"><option value="">All statuses</option><option value="healthy">Healthy</option><option value="abnormal">Error</option></select>
+              <select class="select" aria-label="Filter by authentication type" data-filter-target="collector-health-table" data-filter-key="auth"><option value="">All types</option><option value="public">Public site</option><option value="login">Login sites</option></select>
+            </div>
+          </header>
+          <div class="site-table-frame">
+            <table class="ds-table collector-health-table" id="collector-health-table">
+              <thead><tr><th scope="col">Site</th><th scope="col">Status</th><th scope="col">Running / Queued</th><th scope="col">24h Failed</th><th scope="col">Consecutive failures</th><th scope="col">Circuit breaker</th><th scope="col">Last success</th><th scope="col">Actions</th></tr></thead>
+              <tbody data-site-health-body>
+                <tr data-site="dragonforce" data-module="darkweb" data-status="abnormal" data-auth="public"><td data-label="Site" class="table-title">DragonForce<span>Dark web · Public sites</span></td><td data-label="Status"><span class="status-dot stopped">Error</span></td><td data-label="Running" class="num">0</td><td data-label="24h Failed" class="num">0</td><td data-label="Consecutive failures" class="num">3/3</td><td data-label="Circuit breaker"><span class="badge badge-high">Cooling down</span></td><td data-label="Last success">-</td><td data-label="Actions"><div class="table-actions"><button class="btn btn-secondary" data-site-run="dragonforce">Run</button><button class="btn btn-secondary" data-site-toggle="dragonforce" data-enabled="true">Disable</button></div></td></tr>
+                <tr data-site="darkforums" data-module="darkweb" data-status="abnormal" data-auth="public"><td data-label="Site" class="table-title">DarkForums<span>Dark web · Public sites</span></td><td data-label="Status"><span class="status-dot stopped">Error</span></td><td data-label="Running" class="num">0</td><td data-label="24h Failed" class="num">0</td><td data-label="Consecutive failures" class="num">3/3</td><td data-label="Circuit breaker"><span class="badge badge-high">Cooling down</span></td><td data-label="Last success">-</td><td data-label="Actions"><div class="table-actions"><button class="btn btn-secondary" data-site-run="darkforums">Run</button><button class="btn btn-secondary" data-site-toggle="darkforums" data-enabled="true">Disable</button></div></td></tr>
+                <tr data-site="chaos" data-module="darkweb" data-status="healthy" data-auth="public"><td data-label="Site" class="table-title">Chaos<span>Dark web · Public sites</span></td><td data-label="Status"><span class="status-dot running">Normal</span></td><td data-label="Running" class="num">0</td><td data-label="24h Failed" class="num">0</td><td data-label="Consecutive failures" class="num">0/3</td><td data-label="Circuit breaker"><span class="badge badge-success">Close</span></td><td data-label="Last success">-</td><td data-label="Actions"><div class="table-actions"><button class="btn btn-secondary" data-site-run="chaos">Run</button><button class="btn btn-secondary" data-site-toggle="chaos" data-enabled="true">Disable</button></div></td></tr>
+                <tr data-site="lynx" data-module="darkweb" data-status="healthy" data-auth="public"><td data-label="Site" class="table-title">Lynx<span>Dark web · Public sites</span></td><td data-label="Status"><span class="status-dot running">Normal</span></td><td data-label="Running" class="num">0</td><td data-label="24h Failed" class="num">0</td><td data-label="Consecutive failures" class="num">0/3</td><td data-label="Circuit breaker"><span class="badge badge-success">Close</span></td><td data-label="Last success">-</td><td data-label="Actions"><div class="table-actions"><button class="btn btn-secondary" data-site-run="lynx">Run</button><button class="btn btn-secondary" data-site-toggle="lynx" data-enabled="true">Disable</button></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="collector-table-empty" data-table-empty="collector-health-table">No sites match the current filters.</div>
+          <footer class="site-workbench-foot"><span>Last failure <b class="num" data-bind="failure-total">0</b></span><a href="/collector-control/tasks">View task history</a></footer>
+        </section>
+
+        <section class="site-workbench cursor-workbench" data-od-id="netdisk-cursor-section" data-settings-module-card="netdisk">
+          <header class="site-workbench-toolbar">
+            <div class="site-workbench-title"><strong>Netdisk source health</strong></div>
+          </header>
+          <div class="site-table-frame">
+            <table class="ds-table cursor-table domain-health-table" id="netdisk-cursor-table">
+              <thead><tr><th>Source site</th><th>Domain</th><th>Health status</th></tr></thead>
+              <tbody>
+                <tr data-od-id="netdisk-health-esoua"><td>Esoua</td><td class="num">esoua.com</td><td><span class="badge badge-success">Healthy</span></td></tr>
+                <tr data-od-id="netdisk-health-lzpanx"><td>Lanpan Search</td><td class="num">lzpanx.com</td><td><span class="badge badge-success">Healthy</span></td></tr>
+                <tr data-od-id="netdisk-health-pandashi"><td>Pandashi</td><td class="num">pandashi8.com</td><td><span class="badge badge-success">Healthy</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        </section>
+
+        <section class="section settings-panel-section settings-main" data-od-id="collector-sites-access" data-panel-group="collector-sites" data-panel="access" hidden>
+          <div class="settings-ops-stack">
+            <article class="settings-surface" data-od-id="github-app-access">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 18c-4.5 1.4-4.5-2.5-6-3m12 6v-3.5c0-1 .1-1.5-.5-2 2.8-.3 5.7-1.4 5.7-6.2A4.8 4.8 0 0 0 18 6c.1-.3.5-1.6-.1-3.2 0 0-1-.3-3.4 1.3A11.8 11.8 0 0 0 8.3 4C5.9 2.5 4.9 2.8 4.9 2.8 4.3 4.4 4.7 5.7 4.8 6a4.8 4.8 0 0 0-1.3 3.3c0 4.8 2.9 5.9 5.7 6.2-.5.4-.6 1-.6 2V21"/></svg></span><div><h2>GitHub App API Authentication</h2><p>Administrator configuration; the private key can only be entered and is never shown on the page</p></div></div><div class="settings-actions"><span class="badge" data-bind="github-app-status">Not configured</span><button class="btn btn-secondary" data-code-action="github-refresh">Refresh status</button></div></header>
+              <div class="access-overview"><div><span>App ID</span><strong class="num" data-bind="github-app-id">—</strong></div><div><span>Installation ID</span><strong class="num" data-bind="github-installation-id">—</strong></div><div><span>Last verified</span><strong class="num" data-bind="github-last-validated">—</strong></div><div><span>Token expires</span><strong class="num" data-bind="github-token-expires">—</strong></div></div>
+              <div class="settings-error-line" data-bind="github-last-error" hidden></div>
+              <div class="github-app-form"><div class="settings-form-grid settings-form-grid-2"><label class="field"><span>App ID</span><input class="input" id="github-app-id" inputmode="numeric" autocomplete="off" placeholder="Enter a positive integer App ID"></label><label class="field"><span>Installation ID</span><input class="input" id="github-installation-id" inputmode="numeric" autocomplete="off" placeholder="Enter a positive integer Installation ID"></label></div><label class="field"><span>PEM Private key</span><textarea class="textarea github-private-key" id="github-private-key" autocomplete="off" placeholder="Paste the complete GitHub App PEM private key; when already configured, leave empty to keep the existing key"></textarea></label></div>
+              <footer class="settings-surface-foot"><p>After saving, the installation status is verified and a token issued immediately; the private key is never written to frontend files or the Git repository.</p><div class="settings-actions"><button class="btn btn-danger" data-code-action="github-delete">Delete configuration</button><button class="btn btn-primary" data-code-action="github-save">Save and verify</button></div></footer>
+            </article>
+
+            <article class="settings-surface" data-od-id="chaojiying-access">
+              <header class="settings-surface-head">
+                <div class="settings-heading">
+                  <span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16v10H4zM8 11h2M14 11h2M9 15h6M7 7V5M17 7V5"/></svg></span>
+                  <div><h2>Chaojiying CAPTCHA service</h2><p>Standalone shared configuration that Changan and other CAPTCHA-login sites can reuse</p></div>
+                </div>
+                <div class="settings-actions"><span class="badge" data-bind="chaojiying-status">Not configured</span><button class="btn btn-secondary" data-code-action="chaojiying-refresh">Refresh status</button></div>
+              </header>
+              <div class="access-overview">
+                <div><span>Configuration status</span><strong data-bind="chaojiying-config-state">Not configured</strong></div>
+                <div><span>Account credentials</span><strong data-bind="chaojiying-credential-state">Missing</strong></div>
+                <div><span>Software ID</span><strong data-bind="chaojiying-soft-id-state">Not set</strong></div>
+                <div><span>Default CAPTCHA type</span><strong class="num" data-bind="chaojiying-code-type">5000</strong></div>
+              </div>
+              <div class="settings-error-line" data-bind="chaojiying-last-error" hidden></div>
+              <div class="github-app-form">
+                <div class="settings-form-grid settings-form-grid-2">
+                  <label class="field"><span>Chaojiying account</span><input class="input" id="chaojiying-user" autocomplete="off" placeholder="When already configured, leave empty to keep the existing account"></label>
+                  <label class="field"><span>Chaojiying password</span><input class="input" id="chaojiying-password" type="password" autocomplete="new-password" placeholder="When already configured, leave empty to keep the existing password"></label>
+                  <label class="field"><span>Software ID (optional)</span><input class="input" id="chaojiying-soft-id" autocomplete="off" placeholder="Can be left empty if not set"></label>
+                </div>
+              </div>
+              <footer class="settings-surface-foot">
+                <p>Configuration is managed centrally by the local backend; the password is stored only as an MD5 digest and never shown. On a wrong recognition, the login flow calls the error-report API for a refund.</p>
+                <div class="settings-actions"><button class="btn btn-danger" data-code-action="chaojiying-delete">Delete configuration</button><button class="btn btn-primary" data-code-action="chaojiying-save">Save configuration</button></div>
+              </footer>
+            </article>
+
+            <article class="settings-surface" data-od-id="changan-auto-login-access">
+              <header class="settings-surface-head">
+                <div class="settings-heading">
+                  <span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3a5 5 0 0 0-5 5v3H5v10h14V11h-2V8a5 5 0 0 0-5-5Z"/><path d="M9 11V8a3 3 0 0 1 6 0v3M12 15v2"/></svg></span>
+                  <div><h2>Changan auto-login</h2><p>Automatically recognizes CAPTCHAs and resumes collection after the session expires; the password can only be entered and is never shown on the page</p></div>
+                </div>
+                <div class="settings-actions"><span class="badge" data-bind="changan-auto-login-status">Not configured</span><button class="btn btn-secondary" data-code-action="changan-refresh">Refresh status</button></div>
+              </header>
+              <div class="access-overview">
+                <div><span>Changan credentials</span><strong data-bind="changan-config-state">Not configured</strong></div>
+                <div><span>CAPTCHA service</span><strong data-bind="changan-provider-state">Not configured</strong></div>
+                <div><span>Auto-recovery</span><strong data-bind="changan-enabled-state">Enabled</strong></div>
+                <div><span>Last test</span><strong class="num" data-bind="changan-last-validated">—</strong></div>
+              </div>
+              <div class="settings-error-line" data-bind="changan-last-error" hidden></div>
+              <div class="github-app-form">
+                <div class="settings-form-grid settings-form-grid-2">
+                  <label class="field"><span>Changan account</span><input class="input" id="changan-account" autocomplete="off" placeholder="When already configured, leave empty to keep the existing account"></label>
+                  <label class="field"><span>Changan password</span><input class="input" id="changan-password" type="password" autocomplete="new-password" placeholder="When already configured, leave empty to keep the existing password"></label>
+                  <label class="field"><span>Auto-recovery switch</span><span class="switch-control"><input id="changan-auto-enabled" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span>Enable</span></span></label>
+                </div>
+              </div>
+              <footer class="settings-surface-foot">
+                <p>Only the Changan account is saved here. CAPTCHAs always use the shared Chaojiying configuration above; testing consumes points, and a wrong recognition automatically calls the error-report API for a refund.</p>
+                <div class="settings-actions"><button class="btn btn-danger" data-code-action="changan-delete">Delete configuration</button><button class="btn btn-secondary" data-code-action="changan-test">Test login (consumes points)</button><button class="btn btn-primary" data-code-action="changan-save">Save configuration</button></div>
+              </footer>
+            </article>
+
+            <article class="settings-surface" data-od-id="code-platform-sessions">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h7M17 9v6"/></svg></span><div><h2>Code platform sessions</h2><p>GitHub, GitLab and Gitee sessions are verified independently and do not share state</p></div></div><button class="btn btn-primary" data-code-action="sessions-detect">Auto-detect sessions</button></header>
+              <div class="session-grid" role="table" aria-label="Code platform session status">
+                <div class="session-grid-head" role="row"><span>Platform</span><span>Status</span><span>Account label</span><span>Last checked</span><span>Last error</span><span>Actions</span></div>
+                <article class="session-grid-row" role="row" data-code-session-platform="github"><div class="platform-name"><span class="platform-mark">GH</span><strong>GitHub</strong></div><span class="session-state status-missing" data-session-status>Not configured</span><input class="input" data-session-account placeholder="Account label"><span class="num" data-session-verified>—</span><span class="session-error" data-session-error>—</span><div class="session-actions"><button class="btn btn-secondary" data-code-action="session-login" data-platform="github">Login</button><button class="btn btn-secondary" data-code-action="session-save" data-platform="github">Save</button><button class="btn btn-ghost" data-code-action="session-delete" data-platform="github">Delete</button></div></article>
+                <article class="session-grid-row" role="row" data-code-session-platform="gitlab"><div class="platform-name"><span class="platform-mark">GL</span><strong>GitLab</strong></div><span class="session-state status-missing" data-session-status>Not configured</span><input class="input" data-session-account placeholder="Account label"><span class="num" data-session-verified>—</span><span class="session-error" data-session-error>—</span><div class="session-actions"><button class="btn btn-secondary" data-code-action="session-login" data-platform="gitlab">Login</button><button class="btn btn-secondary" data-code-action="session-save" data-platform="gitlab">Save</button><button class="btn btn-ghost" data-code-action="session-delete" data-platform="gitlab">Delete</button></div></article>
+                <article class="session-grid-row" role="row" data-code-session-platform="gitee"><div class="platform-name"><span class="platform-mark">GE</span><strong>Gitee</strong></div><span class="session-state status-missing" data-session-status>Not configured</span><input class="input" data-session-account placeholder="Account label"><span class="num" data-session-verified>—</span><span class="session-error" data-session-error>—</span><div class="session-actions"><button class="btn btn-secondary" data-code-action="session-login" data-platform="gitee">Login</button><button class="btn btn-secondary" data-code-action="session-save" data-platform="gitee">Save</button><button class="btn btn-ghost" data-code-action="session-delete" data-platform="gitee">Delete</button></div></article>
+              </div>
+            </article>
+
+            <article class="settings-surface exposure-access-surface" data-settings-module-card="netdisk" data-od-id="netdisk-source-access">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 6h16v12H4zM8 10h8M8 14h5"/></svg></span><div><h2>Netdisk source onboarding</h2><p>Source catalog and collection strategy are maintained here; go to Site Runtime for health and pagination cursors</p></div></div><button class="btn btn-secondary" data-collector-sites-tab="sites" data-settings-module="netdisk">View runtime health</button></header>
+              <div class="source-access-table" role="table" aria-label="Netdisk source onboarding">
+                <div class="source-access-head" role="row"><span>Source</span><span>Entry</span><span>Fetch method</span><span>Target scope</span><span>Enable</span></div>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/baidu-netdisk.png" alt="Baidu Netdisk"><strong>Baidu Netdisk</strong></div><span class="source-domain">pan.baidu.com</span><span>Search + details</span><span>Follows the current target</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Baidu Netdisk</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/alipan.png" alt="Aliyun Drive"><strong>Aliyun Drive</strong></div><span class="source-domain">aliyundrive.com</span><span>Public search</span><span>Follows the current target</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Aliyun Drive</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/quark.png" alt="Quark Netdisk"><strong>Quark Netdisk</strong></div><span class="source-domain">pan.quark.cn</span><span>Public search</span><span>Follows the current target</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Quark Netdisk</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/onedrive.png" alt="OneDrive"><strong>OneDrive</strong></div><span class="source-domain">onedrive.live.com</span><span>Public search</span><span>Follows the current target</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable OneDrive</span></label></article>
+              </div>
+            </article>
+
+            <article class="settings-surface exposure-access-surface" data-settings-module-card="library" data-od-id="library-source-access">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 4h11l3 3v13H5zM15 4v4h4M8 12h8M8 16h6"/></svg></span><div><h2>Library source onboarding</h2><p>Source switches and sessions are maintained separately, keeping collection runtime status out of the configuration page</p></div></div><button class="btn btn-secondary" data-collector-sites-tab="sites" data-settings-module="library">View runtime health</button></header>
+              <div class="source-access-table" role="table" aria-label="Library source onboarding">
+                <div class="source-access-head" role="row"><span>Source</span><span>Entry</span><span>Authentication</span><span>Fetch method</span><span>Enable</span></div>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/baidu-wenku.svg" alt="Baidu Wenku"><strong>Baidu Wenku</strong></div><span class="source-domain">wenku.baidu.com</span><span>Optional session</span><span>Search + details</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Baidu Wenku</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/doc88.png" alt="Doc88"><strong>Doc88</strong></div><span class="source-domain">doc88.com</span><span>Public</span><span>Public search</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Doc88</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/docin.png" alt="Docin"><strong>Docin</strong></div><span class="source-domain">docin.com</span><span>Public</span><span>Public search</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable Docin</span></label></article>
+                <article class="source-access-row" role="row"><div class="source-platform"><img src="assets/logos/csdn.png" alt="CSDN Document Library"><strong>CSDN Document Library</strong></div><span class="source-domain">download.csdn.net</span><span>Session</span><span>Search + details</span><label class="switch-control compact-switch"><input type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span class="sr-only">Enable CSDN Library</span></label></article>
+              </div>
+            </article>
+
+            <article class="settings-surface exposure-access-surface" data-settings-module-card="library" data-od-id="library-platform-sessions">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h7M17 9v6"/></svg></span><div><h2>Library platform sessions</h2><p>Sessions are saved and verified per source and do not share credentials with code platforms</p></div></div><button class="btn btn-secondary" type="button" data-exposure-action="session-detect">Check library sessions</button></header>
+              <div class="document-session-grid" role="table" aria-label="Library platform session status">
+                <div class="document-session-head" role="row"><span>Source</span><span>Status</span><span>Account label</span><span>Last checked</span><span>Actions</span></div>
+                <article class="document-session-row" role="row"><div class="source-platform"><img src="assets/logos/baidu-wenku.svg" alt="Baidu Wenku"><strong>Baidu Wenku</strong></div><span class="session-state status-missing">Not configured</span><input class="input" placeholder="Account label"><span class="num">—</span><div class="session-actions"><button class="btn btn-secondary" type="button" data-exposure-action="session-login">Login</button><button class="btn btn-ghost" type="button" data-exposure-action="session-save">Save</button></div></article>
+                <article class="document-session-row" role="row"><div class="source-platform"><img src="assets/logos/csdn.png" alt="CSDN Document Library"><strong>CSDN Document Library</strong></div><span class="session-state status-missing">Not configured</span><input class="input" placeholder="Account label"><span class="num">—</span><div class="session-actions"><button class="btn btn-secondary" type="button" data-exposure-action="session-login">Login</button><button class="btn btn-ghost" type="button" data-exposure-action="session-save">Save</button></div></article>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

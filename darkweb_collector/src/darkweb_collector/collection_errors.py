@@ -1,0 +1,346 @@
+from __future__ import annotations
+
+from contextlib import contextmanager
+from contextvars import ContextVar
+from html import unescape
+from html.parser import HTMLParser
+import re
+from typing import Callable
+from urllib.parse import urlsplit, urlunsplit
+
+
+class CollectionFailure(RuntimeError):
+    """A collector outcome with a scheduling reason, never an inferred deletion."""
+
+    def __init__(self, kind: str, message: str, *, scope: str = "target", retry_after: float = 0,
+                 verification_provider: str = ""):
+        super().__init__(message)
+        self.kind = kind
+        self.scope = scope
+        self.retry_after = max(0.0, float(retry_after))
+        self.verification_provider = verification_provider
+
+    def __reduce__(self):
+        return CollectionFailure, (self.kind, str(self)), {
+            "scope": self.scope, "retry_after": self.retry_after, "verification_provider": self.verification_provider,
+        }
+
+
+_request_callback: ContextVar[Callable[[], None] | None] = ContextVar("collection_request", default=None)
+
+
+@contextmanager
+def request_budget(callback: Callable[[], None]):
+    token = _request_callback.set(callback)
+    try:
+        yield
+    finally:
+        _request_callback.reset(token)
+
+
+def request_attempt() -> None:
+    from darkweb_collector.forum_rate_limit import before_source_request
+
+    before_source_request()
+    callback = _request_callback.get()
+    if callback is not None:
+        callback()
+
+
+def managed_request() -> bool:
+    from darkweb_collector.forum_rate_limit import scope_active
+
+    return _request_callback.get() is not None or scope_active()
+
+
+def has_detail_body(payload: dict) -> bool:
+    body = payload.get("content") if "content" in payload else payload.get("text_excerpt")
+    if not isinstance(body, str):
+        return False
+    text = re.sub(r"<(script|style)\b[^>]*>.*?</\1>", "", body, flags=re.I | re.S)
+    return bool(unescape(re.sub(r"<[^>]+>", " ", text)).strip())
+
+
+
+class _ErrorTemplate(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.stack = []
+        self.error_text = []
+        self.post_text = []
+        self.template = ""
+        self.password = False
+        self.challenge = False
+        self.login_form = False
+        self.listing = False
+        self.forum = False
+        self.main_text = []
+        self.primary_challenge = False
+        self.article_text = []
+        self.article_login = False
+        self.document = False
+        self.service_text = []
+
+    def _flags(self) -> set[str]:
+        return set().union(*(flags for _, flags in self.stack))
+
+    @property
+    def has_listing(self) -> bool:
+        text = " ".join(self.main_text).lower()
+        return self.listing or self.forum and any(marker in text for marker in (
+            "there are no threads", "there are currently no threads", "there are either no threads",
+            "no threads were found", "no threads to display", "no threads have been posted",
+        ))
+
+    def handle_starttag(self, tag, attributes):
+        attrs = dict(attributes)
+        classes = set(str(attrs.get("class") or "").split())
+        identifier = str(attrs.get("id") or "")
+        parents = self._flags()
+        ancillary = tag in {"header", "footer", "nav", "aside", "script", "style", "template"} or bool(
+            classes & {"modal", "modal-dialog", "overlay", "sidebar", "p-nav", "p-footer"}
+            or identifier in {"header", "footer", "panel", "sidebar", "login-modal", "loginModal"}
+        ) or "hidden" in attrs or str(attrs.get("aria-hidden") or "").lower() == "true" or bool(
+            re.search(r"(?:display\s*:\s*none|visibility\s*:\s*hidden)", str(attrs.get("style") or ""), re.I)
+        )
+        parent_ignored = "ancillary" in parents
+        ignored = ancillary or parent_ignored
+        in_post = "post" in parents
+        in_error = "error" in parents
+        quoted = tag in {"blockquote", "pre", "code"} or "quote" in parents
+        if tag == "html" and not self.stack:
+            self.template = str(attrs.get("data-template") or "")
+            self.document = True
+        challenge = (
+            (tag == "form" and str(attrs.get("id") or "") == "challenge-form")
+            or str(attrs.get("id") or "").startswith("cf-challenge")
+            or "cf-turnstile" in classes
+            or (tag in {"script", "iframe"} and any(marker in str(attrs.get("src") or "") for marker in (
+                "/cdn-cgi/challenge-platform/", "challenges.cloudflare.com/",
+            )))
+            or (tag == "script" and bool(re.match(
+                r"^(?:https?:)?//check\.ddos-guard\.net(?:[/:?]|$)", str(attrs.get("src") or ""), re.I,
+            )))
+        )
+        if not parent_ignored and (not ancillary or tag == "script") and not in_post and not quoted:
+            self.challenge = self.challenge or challenge
+            self.primary_challenge = self.primary_challenge or (
+                identifier.startswith("cf-challenge") or tag == "form" and identifier == "challenge-form"
+            )
+        if tag == "input" and str(attrs.get("type") or "").lower() == "password":
+            self.password = True
+        login_form = tag == "form" and bool(re.search(r"(login|sign.?in|member\.php)", str(attrs.get("action") or ""), re.I))
+        self.login_form = self.login_form or login_form and not ignored and not quoted
+        self.article_login = self.article_login or login_form and not ignored and not quoted and "article" in parents
+        error = not ignored and not in_post and not quoted and bool(classes & {"error", "blockMessage", "blockMessage--error"})
+        post = not ignored and not in_error and bool(classes & {"post_body", "post_content", "message-body", "message-userContent"})
+        topic = not ignored and not in_error and not quoted and bool(re.fullmatch(r"tid_\d+", identifier) or "structItem--thread" in classes)
+        topic_link = not ignored and not in_error and tag == "a" and "topic" in parents and bool(
+            re.search(r"(?:Thread-|showthread\.php|/threads/)", str(attrs.get("href") or ""), re.I)
+        )
+        self.forum = self.forum or self.template == "forum_view" or bool(
+            not ignored and not quoted and not in_error and (
+                "forumdisplay" in identifier.lower() or "structItemContainer" in classes
+                or tag == "a" and "Forum-" in str(attrs.get("href") or "")
+            )
+        )
+        if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+            flags = {name for name, present in (
+                ("error", error), ("post", post), ("ancillary", ancillary), ("topic", topic),
+                ("topic_link", topic_link), ("login_form", login_form), ("article", tag == "article"), ("quote", quoted),
+            ) if present}
+            self.stack.append((tag, flags))
+
+    def handle_endtag(self, tag):
+        for index in range(len(self.stack) - 1, -1, -1):
+            if self.stack[index][0] == tag:
+                del self.stack[index:]
+                break
+
+    def handle_data(self, data):
+        flags = self._flags()
+        if "ancillary" in flags:
+            return
+        if "error" in flags and "quote" not in flags and len(self.error_text) < 100:
+            self.error_text.append(data)
+        if "post" in flags and len(self.post_text) < 100:
+            self.post_text.append(data)
+        if "topic_link" in flags and data.strip():
+            self.listing = True
+        if "error" not in flags and "login_form" not in flags and "quote" not in flags and len(self.main_text) < 1000:
+            self.main_text.append(data[:256])
+        if "article" in flags and "error" not in flags and "login_form" not in flags and len(self.article_text) < 100:
+            self.article_text.append(data[:256])
+        if not flags & {"post", "article", "quote", "topic", "login_form"} and len(self.service_text) < 1000:
+            self.service_text.append(data[:256])
+
+
+def has_forum_listing_html(html: str) -> bool:
+    template = _ErrorTemplate()
+    template.feed(str(html or ""))
+    return template.has_listing
+
+
+def raise_if_error_page(html: str, *, missing_markers: tuple[str, ...] = ()) -> None:
+    """Recognize error templates, not keywords quoted in a legitimate post."""
+    if not str(html or "").strip():
+        raise CollectionFailure("parse", "empty document; availability is unconfirmed")
+    if str(html).lstrip().startswith(("{", "[")):
+        # API payloads may contain quoted HTML; their adapters validate the JSON response.
+        return
+    lowered = html.lower()
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", lowered, re.S)
+    title = re.sub(r"<[^>]+>", " ", title_match.group(1)).strip() if title_match else ""
+    template = _ErrorTemplate()
+    template.feed(html)
+    has_post = bool("".join(template.post_text).strip())
+    has_content = has_post or template.has_listing or bool("".join(template.article_text).strip())
+    service_text = " ".join(" ".join(template.service_text).lower().split())
+    if template.document and not has_post and not template.has_listing:
+        if any(phrase in service_text for phrase in (
+            "this bulletin board is currently closed", "this board is currently closed",
+            "this forum is currently closed", "this site is temporarily closed",
+        )):
+            raise CollectionFailure("source_closed", "source returned its site-closure notice", scope="site", retry_after=3600)
+        if re.search(r"\b(?:migration completed|site moved|website moved|we have moved|we've moved)\b", title) and re.search(
+            r"\b(?:(?:blog|site|website|forum) (?:is available now|is now available|has moved)|new (?:address|domain|location))\b",
+            service_text,
+        ):
+            raise CollectionFailure("source_moved", "source returned a migration notice; destination requires review", scope="site", retry_after=21600)
+        if (re.search(r"\b(?:browser check|browser verification|checking your browser)\b", title)
+                and re.search(r"\b(?:browser check in progress|pending verification|verifying your browser|dnsproxy antibot)\b", service_text)):
+            provider = "dnsproxy" if (
+                not has_content and " ".join(unescape(title).split()) == "one more step - browser check"
+                and re.search(r"\bdnsproxy\s+antibot\b", service_text)
+            ) else ""
+            raise CollectionFailure("blocked", "source returned a browser-verification page", scope="site",
+                                    retry_after=900, verification_provider=provider)
+    if not has_content and title == "ddos-guard" and "checking your browser" in service_text:
+        raise CollectionFailure("blocked", "source returned a DDoS-Guard browser-verification page", scope="site")
+    if template.primary_challenge or (not has_content and (template.challenge or title in {
+        "just a moment...", "checking your browser", "attention required! | cloudflare", "verify you are human",
+    })):
+        raise CollectionFailure("blocked", "browser verification page returned", scope="site")
+    login_title = bool(re.search(r"(^|[-|:])\s*(log[ -]?in|sign[ -]?in|Login)\s*($|[-|:])", title))
+    if template.password and not has_post and (
+        (login_title and not template.has_listing) or template.template == "login"
+        or template.article_login or (template.login_form and not has_content)
+    ):
+        raise CollectionFailure("auth_required", "source returned its login form", scope="site")
+    panel = " ".join(template.error_text).lower()
+    if not has_post and not template.has_listing and (
+        re.search(r"\b(?:too many requests|rate limit exceeded|request limit exceeded|"
+                  r"(?:accessing|refreshing) this page too quickly)\b", panel)
+        or not has_content and title in {"too many requests", "429 too many requests", "rate limit exceeded"}
+    ):
+        hint = re.search(r"\b(?:wait|try again in)\s+(\d+)\s*(seconds?|minutes?|hours?)\b", panel or service_text)
+        retry_after = int(hint.group(1)) * ({"s": 1, "m": 60, "h": 3600}[hint.group(2)[0]]) if hint else 0
+        raise CollectionFailure("rate_limited", "source returned its request-limit page", scope="site", retry_after=retry_after)
+    if not has_post:
+        if any(phrase in panel for phrase in (
+            "do not have permission", "you must be logged", "you must be registered",
+            "not have permission", "insufficient privileges",
+        )):
+            raise CollectionFailure("restricted", "source returned its permission error template")
+        if any(phrase in panel for phrase in (
+            "specified thread does not exist", "specified thread could not be found",
+            "requested thread could not be found", "requested thread does not exist",
+            "requested page could not be found", "requested post could not be found",
+        )):
+            raise CollectionFailure("unavailable", "source returned its explicit missing-content template")
+    # These markers are supplied by each adapter and must identify its error container.
+    if any(marker.lower() in lowered for marker in missing_markers):
+        raise CollectionFailure("unavailable", "site returned its explicit unavailable template")
+
+
+def classify_failure(error: Exception) -> CollectionFailure:
+    if isinstance(error, CollectionFailure):
+        return error
+    from darkweb_collector.site_auth import SiteAuthenticationRequired
+    if isinstance(error, SiteAuthenticationRequired):
+        return CollectionFailure("auth_required", str(error), scope="site")
+    name = type(error).__name__.lower()
+    # Driver subclasses such as DeadlockDetected must stay infrastructure errors,
+    # including when their message contains "timeout". Never copy SQL or credentials.
+    if any(part in base.__name__.lower() for base in type(error).__mro__
+           for part in ("databaseerror", "operationalerror", "interfaceerror", "poolerror", "postgresqlbackenderror")):
+        sqlstate = str(getattr(error, "pgcode", None) or getattr(error, "sqlstate", "") or "")
+        if not re.fullmatch(r"[0-9A-Z]{5}", sqlstate):
+            sqlstate = ""
+        reason = {
+            "40P01": "collection database transaction deadlock",
+            "40001": "collection database serialization conflict",
+            "55P03": "collection database lock unavailable",
+            "57014": "collection database query canceled",
+        }.get(sqlstate, "collection storage or message service unavailable")
+        detail = type(error).__name__ + (f", SQLSTATE {sqlstate}" if sqlstate else "")
+        return CollectionFailure("infrastructure", f"{reason} ({detail})", scope="site")
+    message = str(error).lower()
+    if "timeout" in name or "timed out" in message or "timeout" in message:
+        return CollectionFailure("timeout", "collection operation timed out")
+    if any(part in name for part in ("proxyfetch", "torfetch", "connectionerror")):
+        return CollectionFailure("network", "source connection failed")
+    if isinstance(error, (ValueError, TypeError, KeyError)):
+        return CollectionFailure("parse", "document did not match the expected source schema")
+    if isinstance(error, OSError):
+        return CollectionFailure("infrastructure", "collection runtime or artifact storage failed", scope="site")
+    return CollectionFailure("unknown", "collection failed without a confirmed availability reason")
+
+
+def safe_failure_text(value: str, *, limit: int = 480) -> str:
+    """Keep diagnostics useful without persisting credentials or URL queries."""
+    text = str(value)[:4096]
+    text = re.sub(r"(?im)([\"']?(?:authorization|proxy-authorization|cookie|set-cookie)[\"']?\s*[:=]\s*)[^\r\n]+", r"\1[REDACTED]", text)
+    text = re.sub(r"(?i)\b(Bearer|Basic)\s+[^\s,;]+", r"\1 [REDACTED]", text)
+    text = re.sub(
+        r"(?i)([\"']?(?:password|passwd|pass2|pwd|secret|token|api[_-]?key|access[_-]?(?:key|token)|mybbuser|session[_-]?id|auth[_-]?key|sid)[\"']?\s*[:=]\s*)"
+        r"(?:\"[^\"]*\"|'[^']*'|[^\s,;&]+)", r"\1[REDACTED]", text,
+    )
+    def public_url(match):
+        try:
+            url = urlsplit(match.group(0))
+            host = url.hostname or ""
+            if ":" in host:
+                host = f"[{host}]"
+            authority = host + (f":{url.port}" if url.port else "")
+            return urlunsplit((url.scheme, authority, url.path, "", ""))
+        except ValueError:
+            return "[URL]"
+    text = re.sub(r"[a-zA-Z][a-zA-Z0-9+.-]*://[^\s<>\"']+", public_url, text)
+    return " ".join(text.split()).encode("utf-8")[:limit].decode("utf-8", errors="ignore")
+
+
+def failure_details(error: Exception) -> dict:
+    failure = classify_failure(error)
+    return {
+        "error_type": type(error).__name__, "kind": failure.kind, "scope": failure.scope,
+        "retry_after": failure.retry_after, "error_message": safe_failure_text(str(failure)),
+        "verification_provider": failure.verification_provider,
+    }
+
+
+def summarize_failures(message: str, failures: list[tuple[str, Exception]]) -> CollectionFailure:
+    if not failures:
+        return CollectionFailure("unknown", safe_failure_text(message))
+    priority = ("retry_budget", "rate_limited", "infrastructure", "source_moved", "source_closed", "blocked", "auth_required", "restricted", "unavailable", "timeout", "network", "not_found", "empty_content", "parse", "unknown")
+    details = [(safe_failure_text(label)[:80], failure_details(error)) for label, error in failures]
+    candidates = details
+    last_route, last_failure = details[-1]
+    if last_failure["kind"] in {"not_found", "empty_content"} and (last_route == "browser" or last_route.startswith("browser_")):
+        # A final browser response may have cleared the earlier HTTP login or
+        # verification wall. Keep those diagnostics, without pausing the site
+        # for a gate that the browser has already passed.
+        candidates = [item for item in details if item[1]["kind"] not in {"blocked", "auth_required"}]
+    selected = min(candidates, key=lambda item: (
+        priority.index(item[1]["kind"]) if item[1]["kind"] in priority else len(priority),
+        item[1]["scope"] != "site", -item[1]["retry_after"],
+    ))
+    primary = selected[1]
+    ordered = [selected] + [item for item in details if item is not selected]
+    reasons = "; ".join(f"{context}: {item['kind']}: {item['error_message']}" for context, item in ordered[:8])
+    summary = f"{safe_failure_text(message)}; {reasons}".encode("utf-8")[:3600].decode("utf-8", errors="ignore")
+    failure = CollectionFailure(primary["kind"], summary, scope=primary["scope"], retry_after=primary["retry_after"],
+                                verification_provider=primary["verification_provider"])
+    failure.__cause__ = CollectionFailure(primary["kind"], primary["error_message"], scope=primary["scope"],
+                                          retry_after=primary["retry_after"], verification_provider=primary["verification_provider"])
+    return failure

@@ -1,0 +1,623 @@
+from __future__ import annotations
+
+import argparse
+import ctypes
+from ctypes import wintypes
+import json
+import logging
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+from uuid import uuid4
+
+import psutil
+import redis
+
+from darkweb_collector.queueing import QUEUE_CONCURRENCY
+from darkweb_collector.worker_activity import activity_expired, clear_activity, read_activity
+
+
+logger = logging.getLogger(__name__)
+
+
+class _JobLimits(ctypes.Structure):
+    _fields_ = [
+        ("process_time", ctypes.c_longlong), ("job_time", ctypes.c_longlong),
+        ("flags", wintypes.DWORD), ("minimum_working_set", ctypes.c_size_t),
+        ("maximum_working_set", ctypes.c_size_t), ("active_processes", wintypes.DWORD),
+        ("affinity", ctypes.c_size_t), ("priority", wintypes.DWORD), ("scheduling", wintypes.DWORD),
+    ]
+
+
+class _IoCounters(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_ulonglong) for name in
+               ("read_operations", "write_operations", "other_operations", "read_bytes", "write_bytes", "other_bytes")]
+
+
+class _ExtendedJobLimits(ctypes.Structure):
+    _fields_ = [("basic", _JobLimits), ("io", _IoCounters)] + [
+        (name, ctypes.c_size_t) for name in ("process_memory", "job_memory", "peak_process_memory", "peak_job_memory")
+    ]
+
+
+class _JobAccounting(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_longlong) for name in
+               ("user_time", "kernel_time", "period_user_time", "period_kernel_time")] + [
+        (name, wintypes.DWORD) for name in ("page_faults", "total_processes", "active_processes", "terminated_processes")
+    ]
+
+
+class _WorkerJob:
+    """Keep all Windows browser descendants owned even after their Python parent exits."""
+
+    def __init__(self, name: str, *, existing: bool = False, query_only: bool = False):
+        if not re.fullmatch(r"Local\\dwti-worker-[a-z0-9-]+-[0-9a-f]{32}", name):
+            raise ValueError("invalid worker job ownership")
+        self.api = ctypes.WinDLL("kernel32", use_last_error=True)
+        signatures = {
+            "CreateJobObjectW": ([ctypes.c_void_p, wintypes.LPCWSTR], wintypes.HANDLE),
+            "OpenJobObjectW": ([wintypes.DWORD, wintypes.BOOL, wintypes.LPCWSTR], wintypes.HANDLE),
+            "SetInformationJobObject": ([wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD], wintypes.BOOL),
+            "QueryInformationJobObject": ([wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p], wintypes.BOOL),
+            "AssignProcessToJobObject": ([wintypes.HANDLE, wintypes.HANDLE], wintypes.BOOL),
+            "IsProcessInJob": ([wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL)], wintypes.BOOL),
+            "TerminateJobObject": ([wintypes.HANDLE, wintypes.UINT], wintypes.BOOL),
+            "OpenProcess": ([wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            "OpenThread": ([wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.HANDLE),
+            "ResumeThread": ([wintypes.HANDLE], wintypes.DWORD),
+            "CloseHandle": ([wintypes.HANDLE], wintypes.BOOL),
+        }
+        for method, (arguments, result) in signatures.items():
+            function = getattr(self.api, method)
+            function.argtypes, function.restype = arguments, result
+        self.name = name
+        self.handle = (self.api.OpenJobObjectW(0x0004 if query_only else 0x0004 | 0x0008, False, name) if existing
+                       else self.api.CreateJobObjectW(None, name))
+        if not self.handle:
+            raise ctypes.WinError(ctypes.get_last_error())
+        if not existing:
+            limits = _ExtendedJobLimits()
+            limits.basic.flags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE; children cannot break away.
+            if not self.api.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+                error = ctypes.get_last_error()
+                self.close()
+                raise ctypes.WinError(error)
+
+    def assign_and_resume(self, worker) -> None:
+        if not self.api.AssignProcessToJobObject(self.handle, wintypes.HANDLE(int(worker._handle))):
+            raise ctypes.WinError(ctypes.get_last_error())
+        threads = psutil.Process(worker.pid).threads()
+        if len(threads) != 1:
+            raise OSError("suspended worker initial thread could not be identified")
+        thread = self.api.OpenThread(0x0002, False, threads[0].id)
+        if not thread:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            if self.api.ResumeThread(thread) == 0xFFFFFFFF:
+                raise ctypes.WinError(ctypes.get_last_error())
+        finally:
+            self.api.CloseHandle(thread)
+
+    def contains(self, pid: int) -> bool:
+        process = self.api.OpenProcess(0x1000, False, pid)
+        if not process:
+            error = ctypes.get_last_error()
+            if error == 87:
+                return False
+            raise ctypes.WinError(error)
+        try:
+            contained = wintypes.BOOL()
+            if not self.api.IsProcessInJob(process, self.handle, ctypes.byref(contained)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return bool(contained.value)
+        finally:
+            self.api.CloseHandle(process)
+
+    def stop(self) -> bool:
+        if not self.api.TerminateJobObject(self.handle, 1):
+            raise ctypes.WinError(ctypes.get_last_error())
+        deadline = time.monotonic() + 15
+        while True:
+            accounting = _JobAccounting()
+            if not self.api.QueryInformationJobObject(self.handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not accounting.active_processes:
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.05)
+
+    def active_processes(self) -> int:
+        accounting = _JobAccounting()
+        if not self.api.QueryInformationJobObject(self.handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return int(accounting.active_processes)
+
+    def close(self) -> None:
+        if self.handle:
+            self.api.CloseHandle(self.handle)
+            self.handle = None
+
+
+def _warn_resource_error(message: str, exc: Exception) -> None:
+    codes = [getattr(exc, name, None) for name in ("errno", "winerror")]
+    errno, winerror = [value if isinstance(value, int) else None for value in codes]
+    logger.warning("%s (%s; errno=%s; winerror=%s)", message, type(exc).__name__, errno, winerror)
+
+
+def _health_directory() -> Path:
+    return Path(__file__).resolve().parents[2] / ".runtime" / "windows" / "worker-health"
+
+
+def _managed_activity_path(raw: str) -> Path:
+    from darkweb_collector.storage_paths import app_root
+
+    path = Path(raw)
+    if not path.is_absolute() or not re.fullmatch(r"worker-[a-z0-9-]+\.activity", path.name) or path.is_symlink():
+        raise ValueError("unmanaged worker activity path")
+    resolved = path.resolve(strict=True)
+    if resolved.parent != _health_directory().resolve():
+        relative = resolved.relative_to((app_root() / "releases").resolve())
+        if (len(relative.parts) != 6 or not re.fullmatch(r"v[0-9][a-zA-Z0-9._-]*", relative.parts[0])
+                or relative.parts[1:5] != ("darkweb_collector", ".runtime", "windows", "worker-health")):
+            raise ValueError("activity does not belong to a managed release")
+    snapshot = resolved.with_suffix(".json")
+    if snapshot.is_symlink() or snapshot.resolve(strict=True).parent != resolved.parent:
+        raise ValueError("unsafe worker supervision snapshot")
+    return resolved
+
+
+def _orphan_tree_stopped(state: dict, payload: dict) -> bool:
+    if _process_alive(int(state["supervisor_pid"]), float(state["supervisor_started"])):
+        return False
+    if _process_alive(int(state["worker_pid"]), float(state["worker_started"])):
+        return False
+    if _process_alive(payload["worker_pid"], payload["worker_started"]):
+        return False
+    same_process = (state["worker_pid"] == payload["worker_pid"]
+                    and state["worker_started"] == payload["worker_started"])
+    same_job = bool(payload.get("worker_job") and payload["worker_job"] == state.get("worker_job"))
+    if not (same_process or same_job) or os.name != "nt" or not state.get("worker_job"):
+        return False
+    try:
+        job = _WorkerJob(state["worker_job"], existing=True, query_only=True)
+    except OSError as exc:
+        if getattr(exc, "winerror", None) == 2:
+            return True
+        raise
+    try:
+        return job.active_processes() == 0
+    finally:
+        job.close()
+
+
+def recover_orphaned_activities(worker_name: str | None = None) -> dict[str, int]:
+    """Adopt stopped managed journals across releases; never terminate a live owner."""
+    from darkweb_collector.db import get_db_connection
+
+    result = {"recovered": 0, "blocked": 0, "errors": 0}
+    try:
+        with get_db_connection() as connection:
+            paths = {row[0] for row in connection.execute(
+                "SELECT DISTINCT activity_path FROM crawl_detail_control WHERE activity_path <> ''"
+            ).fetchall()}
+        paths.update(str(path) for path in _health_directory().glob("*.activity"))
+    except Exception as exc:
+        _warn_resource_error("Cannot inspect previous worker journals", exc)
+        result["errors"] += 1
+        return result
+    for raw in sorted(paths):
+        if worker_name is not None and Path(raw).stem != worker_name:
+            continue
+        try:
+            try:
+                Path(raw).stat()
+            except FileNotFoundError:
+                continue
+            path = _managed_activity_path(raw)
+            payload = read_activity(path)
+            if payload is None:
+                continue
+            state = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+            if not _orphan_tree_stopped(state, payload):
+                result["blocked"] += 1
+                continue
+            with get_db_connection() as connection:
+                job = connection.execute("SELECT site_name FROM crawl_jobs WHERE job_id = ?", (payload["job_id"],)).fetchone()
+                if job is None or job["site_name"] != payload["site_name"]:
+                    raise ValueError("orphan journal does not match its stored job")
+            if _recover_activity(path, payload, "worker_lost"):
+                result["recovered"] += 1
+            else:
+                result["errors"] += 1
+        except Exception as exc:
+            _warn_resource_error("Previous worker journal could not be recovered; retaining ownership", exc)
+            result["errors"] += 1
+    return result
+
+
+def get_worker_capacity() -> int | None:
+    workers, known = set(), False
+    for path in _health_directory().glob("*.json"):
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+            if time.time() - float(state["updated_at"]) > 60 or not set(state["queues"]) & set(QUEUE_CONCURRENCY):
+                continue
+            known = True
+            if (state["status"] == "running" and _process_alive(state["supervisor_pid"], state["supervisor_started"])
+                    and _process_alive(state["worker_pid"], state["worker_started"])):
+                workers.add((state["worker_pid"], state["worker_started"]))
+        except (OSError, psutil.Error, ValueError, KeyError, TypeError):
+            continue
+    return len(workers) if known else None
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(f".{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def mark_worker_ready(**kwargs) -> None:
+    path = os.environ.get("DARKWEB_WORKER_READY_FILE")
+    if path:
+        _write_json(Path(path), {"pid": os.getpid(), "started": psutil.Process().create_time()})
+
+
+def _process_alive(pid: int, started: float) -> bool:
+    try:
+        process = psutil.Process(pid)
+        return process.create_time() == started and process.is_running()
+    except (psutil.NoSuchProcess, ValueError, TypeError):
+        return False
+
+
+def queue_health_errors() -> dict[str, str]:
+    """Read supervisor snapshots without broker commands or exposing connection settings."""
+    healthy: set[str] = set()
+    errors: dict[str, str] = {}
+    for path in _health_directory().glob("*.json"):
+        queues = []
+        try:
+            state = json.loads(path.read_text(encoding="utf-8"))
+            queues = [queue for queue in state["queues"] if queue in QUEUE_CONCURRENCY]
+            supervisor_alive = (
+                time.time() - state["updated_at"] < 60
+                and _process_alive(state["supervisor_pid"], state["supervisor_started"])
+            )
+            running = supervisor_alive and state["status"] == "running" and _process_alive(
+                state["worker_pid"], state["worker_started"]
+            )
+            if running:
+                healthy.update(queues)
+            else:
+                reason = state.get("error") if supervisor_alive else "Collection daemon is offline; check the runtime environment"
+                for queue in queues:
+                    errors[queue] = reason or "Collection process not ready; waiting for automatic recovery"
+        except (OSError, psutil.Error):
+            for queue in queues:
+                errors[queue] = "Collection process status cannot be confirmed; check system resources"
+        except (ValueError, KeyError, TypeError):
+            continue
+    return {queue: message for queue, message in errors.items() if queue not in healthy}
+
+
+def _queue_error(client, queues: list[str]) -> str:
+    for queue in queues:
+        for priority in (0, 3, 6, 9):
+            key = queue if priority == 0 else f"{queue}\x06\x16{priority}"
+            if client.type(key) not in (b"none", b"list"):
+                return f"Task queue {queue} has an abnormal type; recovery paused. Keep the data and check the message service"
+    return ""
+
+
+def _stop_worker(worker, state: dict, job: _WorkerJob | None = None) -> bool:
+    try:
+        if job is not None and not job.stop():
+            return False
+        processes = {}
+        roots = []
+        if worker is not None and worker.poll() is None:
+            roots.append(worker.pid)
+        # Windows venv redirectors can exit before their real Python child.
+        if state.get("worker_pid"):
+            try:
+                tracked = psutil.Process(state["worker_pid"])
+                if tracked.create_time() == state["worker_started"] and tracked.is_running():
+                    roots.append(tracked.pid)
+            except psutil.NoSuchProcess:
+                pass
+        for pid in set(roots):
+            try:
+                process = psutil.Process(pid)
+                for child in process.children(recursive=True) + [process]:
+                    processes[child.pid] = child
+            except psutil.NoSuchProcess:
+                pass
+        for process in processes.values():
+            try:
+                process.terminate()
+            except psutil.NoSuchProcess:
+                pass
+        _, alive = psutil.wait_procs(list(processes.values()), timeout=10)
+        for process in alive:
+            try:
+                process.kill()
+            except psutil.NoSuchProcess:
+                pass
+        if alive:
+            _, alive = psutil.wait_procs(alive, timeout=5)
+        if worker is not None:
+            worker.wait(timeout=5)
+        return not alive
+    except Exception as exc:
+        _warn_resource_error("Worker stop was not confirmed; retaining ownership", exc)
+        return False
+
+
+def _ready_worker(path: Path, worker, job: _WorkerJob | None = None) -> psutil.Process | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        process = psutil.Process(payload["pid"])
+        if "started" in payload and process.create_time() != payload["started"]:
+            return None
+        if ((job is not None and job.contains(process.pid)) or process.pid == worker.pid
+                or any(parent.pid == worker.pid for parent in process.parents())):
+            return process
+    except (OSError, ValueError, KeyError, TypeError, psutil.Error):
+        pass
+    return None
+
+
+def _activity_owned(payload: dict, state: dict, job: _WorkerJob | None) -> bool:
+    if (payload["worker_pid"] == state["worker_pid"]
+            and payload["worker_started"] == state["worker_started"]):
+        return True
+    return bool(job is not None and _process_alive(payload["worker_pid"], payload["worker_started"])
+                and job.contains(payload["worker_pid"]))
+
+
+def _recover_activity(path: Path, payload: dict | None, reason: str) -> bool:
+    if payload is None:
+        return True
+    if _process_alive(payload["worker_pid"], payload["worker_started"]):
+        raise RuntimeError("task worker is still alive; refusing ownership recovery")
+    try:
+        from darkweb_collector.task_recovery import recover_stopped_task
+
+        if recover_stopped_task(payload, reason=reason) is False:
+            return False
+    except Exception as exc:
+        _warn_resource_error("Stopped worker task recovery failed; retaining journal", exc)
+        return False
+    clear_activity(path, payload)
+    return True
+
+
+def supervise(name: str, queues: list[str], hostname: str, workdir: str | None = None) -> None:
+    from darkweb_collector.browser_temp import request_browser_temp_cleanup
+
+    workdir = str(Path(workdir or Path(__file__).resolve().parents[2]).resolve())
+    recover_orphaned_activities(worker_name=name)
+    path = _health_directory() / f"{name}.json"
+    ready_path = path.with_suffix(".ready")
+    activity_path = path.with_suffix(".activity")
+    previous = {}
+    if path.exists():
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+            previous_pid = int(previous["supervisor_pid"])
+            previous_started = float(previous["supervisor_started"])
+        except OSError as exc:
+            raise RuntimeError("cannot read existing supervisor ownership; refusing duplicate") from exc
+        except (ValueError, KeyError, TypeError) as exc:
+            raise RuntimeError("cannot verify existing supervisor ownership; refusing duplicate") from exc
+        else:
+            try:
+                previous_alive = _process_alive(previous_pid, previous_started)
+            except (OSError, psutil.Error) as exc:
+                raise RuntimeError("cannot confirm existing supervisor ownership; refusing duplicate") from exc
+            if previous_alive:
+                raise RuntimeError("worker supervisor already running")
+    state = {
+        "queues": queues, "supervisor_pid": os.getpid(),
+        "supervisor_started": psutil.Process().create_time(),
+        "worker_pid": previous.get("worker_pid", 0), "worker_started": previous.get("worker_started", 0),
+        "worker_job": previous.get("worker_job", ""), "status": "starting", "error": "Collection process starting",
+    }
+    client = redis.Redis.from_url(os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0"),
+                                 socket_connect_timeout=3, socket_timeout=3)
+    worker = None
+    job = None
+    stop_pending = bool(state["worker_pid"] or state["worker_job"] or activity_path.exists())
+    stop_reason = "worker_lost"
+    pending_activity = None
+    retry_delay = 15
+    next_start = 0.0
+    started_at = 0.0
+    try:
+        while True:
+            request_browser_temp_cleanup()
+            now = time.monotonic()
+            try:
+                if job is None and state["worker_job"] and os.name == "nt":
+                    try:
+                        job = _WorkerJob(state["worker_job"], existing=True)
+                    except OSError as exc:
+                        if getattr(exc, "winerror", None) != 2:
+                            raise
+                        state["worker_job"] = ""
+                activity = read_activity(activity_path)
+                if activity is not None:
+                    if not _activity_owned(activity, state, job):
+                        # A stopped owner's journal is safe to recover; a different live owner is not.
+                        if _process_alive(activity["worker_pid"], activity["worker_started"]):
+                            raise RuntimeError("worker activity belongs to a different live process")
+                        stop_pending = True
+                        stop_reason = "worker_lost"
+                    if pending_activity is None:
+                        pending_activity = activity
+                    elif pending_activity["task_id"] != activity["task_id"]:
+                        if stop_pending:
+                            raise RuntimeError("worker activity changed during recovery")
+                        pending_activity = activity
+                    if activity.get("recovery_required") is True and not stop_pending:
+                        logger.warning("Worker task finalization requires ownership recovery")
+                        stop_pending = True
+                        stop_reason = "finalization"
+                    elif activity_expired(activity) and not stop_pending:
+                        logger.warning("Worker task exceeded its total execution deadline")
+                        stop_pending = True
+                        stop_reason = "timeout"
+                elif not stop_pending:
+                    pending_activity = None
+                worker_lost = worker is not None and (
+                    (state["worker_pid"] == worker.pid and worker.poll() is not None)
+                    or (state["worker_pid"] != worker.pid
+                        and not _process_alive(state["worker_pid"], state["worker_started"]))
+                )
+                if stop_pending or worker_lost:
+                    if not stop_pending:
+                        logger.warning("Worker pid %s exited; retry in %ss", state["worker_pid"], retry_delay)
+                        stop_reason = "worker_lost"
+                    stop_pending = True
+                    if _stop_worker(worker, state, job):
+                        worker = None
+                        # Read again after exit: a task may have started between the last poll and worker loss.
+                        final_activity = read_activity(activity_path)
+                        if final_activity is not None:
+                            # The previous task can finish normally just before the stop signal,
+                            # then accept another task. Its cleared journal proves finalization completed.
+                            pending_activity = final_activity
+                        if _recover_activity(activity_path, pending_activity, stop_reason):
+                            if job is not None:
+                                job.close()
+                                job = None
+                            stop_pending = False
+                            pending_activity = None
+                            state.update(worker_pid=0, worker_started=0, worker_job="", status="recovering",
+                                         error="Collection process exited; waiting for automatic recovery")
+                            next_start = now + retry_delay
+                            retry_delay = min(retry_delay * 2, 300)
+                        else:
+                            state.update(status="error", error="Collection task recovery incomplete; placeholder kept, waiting to retry")
+                    else:
+                        state.update(status="error", error="Collection process stop not confirmed; retrying")
+                if not stop_pending:
+                    try:
+                        error = _queue_error(client, queues)
+                    except redis.RedisError:
+                        error = "Message service connection error; retrying"
+                    if error:
+                        state.update(status="error", error=error)
+                        # Never rename/delete broker keys automatically. A type error needs evidence-preserving repair.
+                    elif worker is None and now >= next_start:
+                        ready_path.unlink(missing_ok=True)
+                        env = {**os.environ, "DARKWEB_WORKER_READY_FILE": str(ready_path),
+                               "DARKWEB_WORKER_ACTIVITY_FILE": str(activity_path)}
+                        command = [sys.executable, "-m", "celery", "--workdir", workdir, "-A", "darkweb_collector.celery_app:app",
+                                   "worker", "-Q", ",".join(queues), "--concurrency", "1", "--prefetch-multiplier", "1",
+                                   "--pool", "solo", "--loglevel", "info", "--hostname", hostname]
+                        try:
+                            if os.name == "nt":
+                                job = _WorkerJob(f"Local\\dwti-{name}-{uuid4().hex}")
+                                env["DARKWEB_WORKER_JOB"] = job.name
+                            flags = (subprocess.CREATE_NO_WINDOW | 0x00000004) if os.name == "nt" else 0  # CREATE_SUSPENDED
+                            worker = subprocess.Popen(command, env=env, stdin=subprocess.DEVNULL,
+                                                      creationflags=flags)
+                            state.update(worker_pid=worker.pid, worker_started=psutil.Process(worker.pid).create_time(),
+                                         worker_job=job.name if job is not None else "",
+                                         status="starting", error="Collection process connecting to the message service")
+                            # Persist ownership before the child can create browsers or accept tasks.
+                            state["updated_at"] = time.time()
+                            _write_json(path, state)
+                            if job is not None:
+                                job.assign_and_resume(worker)
+                            started_at = now
+                        except (OSError, psutil.Error):
+                            stop_pending = not _stop_worker(worker, state, job)
+                            if not stop_pending:
+                                worker = None
+                                if job is not None:
+                                    job.close()
+                                    job = None
+                                state.update(status="error", worker_pid=0, worker_started=0, worker_job="",
+                                             error="Collection process failed to start; waiting for automatic recovery")
+                            else:
+                                state.update(status="error", error="Collection process stop not confirmed; retrying")
+                            next_start = now + retry_delay
+                            retry_delay = min(retry_delay * 2, 300)
+                    elif worker is not None:
+                        ready = _ready_worker(ready_path, worker, job)
+                        state.update(status="running" if ready else "starting", error="" if ready else "Collection process not ready yet")
+                        if ready:
+                            state.update(worker_pid=ready.pid, worker_started=ready.create_time())
+                        if ready and now - started_at >= 300:
+                            retry_delay = 15
+                        elif not ready and now - started_at >= 300:
+                            # Stop/recovery always goes through the same ownership-checked path.
+                            stop_pending = True
+                            stop_reason = "worker_lost"
+                            state.update(status="error", error="Collection process start timed out; waiting to stop and recover tasks")
+            except (OSError, psutil.Error, ValueError, KeyError, TypeError, RuntimeError) as exc:
+                _warn_resource_error("Worker supervision resource/state query failed; retrying", exc)
+                stop_pending = True
+                # An unreadable journal cannot authorize task recovery or a replacement worker.
+                # Stop only the already-owned process tree and retain its original journal.
+                if _stop_worker(worker, state, job):
+                    worker = None
+                state.update(status="error", error="Process or task recovery status cannot be confirmed; placeholder kept, waiting to retry")
+            state["updated_at"] = time.time()
+            try:
+                _write_json(path, state)
+            except OSError as exc:
+                _warn_resource_error("Worker health snapshot write failed; retrying", exc)
+            time.sleep(15)
+    finally:
+        stopped = _stop_worker(worker, state, job)
+        if stopped:
+            try:
+                stopped = _recover_activity(activity_path, read_activity(activity_path), "worker_lost")
+            except Exception as exc:
+                _warn_resource_error("Stopped worker task recovery failed; retaining journal", exc)
+                stopped = False
+        if job is not None:
+            job.close()
+        try:
+            client.close()
+        except (OSError, redis.RedisError) as exc:
+            _warn_resource_error("Worker broker client close failed", exc)
+        if stopped:
+            state.update(status="stopped", worker_pid=0, worker_started=0, worker_job="",
+                         error="Collection daemon stopped", updated_at=time.time())
+        else:
+            state.update(status="error", error="Collection daemon stopped; child process stop not confirmed", updated_at=time.time())
+        try:
+            _write_json(path, state)
+        except OSError as exc:
+            _warn_resource_error("Final worker health snapshot write failed", exc)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name")
+    parser.add_argument("--queues")
+    parser.add_argument("--hostname")
+    parser.add_argument("--recover-orphans", action="store_true")
+    parser.add_argument("--workdir", default=str(Path(__file__).resolve().parents[2]))
+    args = parser.parse_args()
+    if args.recover_orphans:
+        result = recover_orphaned_activities()
+        print(json.dumps(result))
+        raise SystemExit(1 if result["errors"] or result["blocked"] else 0)
+    if not args.name or not args.queues or not args.hostname:
+        parser.error("--name, --queues and --hostname are required to supervise a worker")
+    queues = args.queues.split(",")
+    if not re.fullmatch(r"worker-[a-z0-9-]+", args.name) or any(q not in QUEUE_CONCURRENCY for q in queues):
+        parser.error("invalid worker name or queues")
+    logging.basicConfig(level=logging.INFO)
+    supervise(args.name, queues, args.hostname, args.workdir)

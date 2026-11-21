@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Configuration Center · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to main content</a>
+  <div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="settings-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation" data-od-id="settings-nav">
+        <div class="nav-label">Workspace</div>
+        <a class="nav-link" href="dashboard.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Security workbench</a>
+        <a class="nav-link" href="intelligence.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M11 8v6M8 11h6"/></svg>Threat Intelligence</a>
+        <a class="nav-link" href="monitoring.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v12H4zM8 21h8M12 17v4"/></svg>Exposure Monitoring</a>
+        <a class="nav-link" href="collector-sites.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M7 4v6M17 4v6M5 12h14v8H5z"/></svg>Collection Operations</a>
+        <div class="nav-label">Management</div>
+        <a class="nav-link active" href="settings.html" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A8 8 0 0 0 15 6l-.3-2.6h-4L10.4 6A8 8 0 0 0 8 7.1l-2.4-1-2 3.4L5.7 11a7 7 0 0 0 0 2L3.6 14.5l2 3.4 2.4-1A8 8 0 0 0 10.4 18l.3 2.6h4L15 18a8 8 0 0 0 1.6-1.1l2.4 1 2-3.4-2.1-1.5a7 7 0 0 0 .1-1Z"/></svg>Configuration Center</a>
+      </nav>
+      <div class="sidebar-footer"><div class="coverage"><strong>Configuration principle</strong><span>Runtime controls are separate from persistent configuration</span></div></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+
+    <div class="app-stage">
+      <header class="app-header" data-od-id="settings-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="header-actions"><span class="app-version" data-od-id="settings-version">Version <strong>v20260901.1.0</strong></span><button class="avatar" type="button" aria-label="Personal account" data-od-id="settings-account"></button></div>
+      </header>
+
+      <main class="app-main settings-main" id="content" data-collector-surface data-needs-code-config data-needs-watchlist-notifications data-od-id="settings-main">
+        <section class="section settings-nav-section" data-od-id="settings-navigation">
+          <div class="tabs settings-tabs" data-panels="settings" role="tablist" aria-label="Configuration types">
+            <button class="tab active" data-tab="objects" role="tab" aria-selected="true" data-od-id="settings-tab-objects"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="m10.5 9.5 3 5M16 5v5m-2.5-2.5h5"/></svg><span>Monitoring target</span></button>
+            <button class="tab" data-tab="rules" role="tab" aria-selected="false" data-od-id="settings-tab-rules"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.1 8.1-8 10-4.9-1.9-8-5-8-10V6l8-3Z"/><path d="M9 12h6m-3-3v6"/></svg><span>Sensitive Rules</span></button>
+            <button class="tab" data-tab="notifications" role="tab" aria-selected="false" data-od-id="settings-tab-notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 8h18c0-1-3-1-3-8M10 21h4"/></svg><span>Notification Channels</span></button>
+          </div>
+        </section>
+
+        <section class="section settings-panel-section" data-od-id="settings-objects" data-panel-group="settings" data-panel="objects">
+          <div class="settings-ops-stack">
+            <article class="settings-surface settings-object-surface" data-od-id="code-object-control">
+              <header class="settings-surface-head">
+                <div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 9.5 13.5 14.5M16 5v5M13.5 7.5h5"/></svg></span><div><h2>Monitoring target configuration</h2><p>Status, basic information and company profile of the current target maintained in one place</p></div></div>
+                <div class="settings-actions"><button class="btn btn-secondary" data-code-action="watchlist-new" data-od-id="code-object-new">New target</button><button class="btn btn-primary" data-code-action="watchlist-save" data-od-id="code-object-save">Save target</button><button class="btn btn-danger" data-code-action="watchlist-delete" data-od-id="code-object-delete">Delete target</button></div>
+              </header>
+              <div class="settings-object-control">
+                <label class="field"><span>Current monitoring target</span><select class="select" id="code-watchlist-select" data-od-id="code-object-select"><option value="">No targets yet; create one</option></select></label>
+                <label class="switch-control"><input id="code-object-enabled" type="checkbox" checked><span class="switch-track" aria-hidden="true"></span><span>Enable this target</span></label>
+                <div class="settings-inline-state"><span>Configuration status</span><strong data-bind="code-watchlist-state">To be configured</strong></div>
+              </div>
+
+            <section class="object-config-section" data-od-id="code-object-basic">
+              <div class="object-section-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V7l8-4 8 4v13M8 20v-5h8v5M8 9h2m4 0h2"/></svg></span><div><h2>Basic information</h2><p>Target name and organization distinguish independent monitoring scopes</p></div></div></div>
+              <div class="settings-form-grid settings-form-grid-3">
+                <label class="field"><span>Monitoring target name</span><input class="input" id="code-object-name" placeholder="For example: Group code assets"></label>
+                <label class="field"><span>Organization</span><input class="input" id="code-organization-name" placeholder="Enter the company or business unit"></label>
+                <label class="field"><span>Notes</span><input class="input" id="code-object-notes" placeholder="Describe the purpose, scope or owner"></label>
+              </div>
+            </section>
+
+            <section class="object-config-section" data-od-id="code-enterprise-profile">
+              <div class="object-section-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/><circle cx="12" cy="12" r="9"/></svg></span><div><h2>Company profile</h2><p>Automatically generates base search terms for netdisks and document libraries, saved with the current target</p></div></div></div>
+              <div class="profile-groups">
+                <section class="profile-group" data-od-id="profile-name-anchors"><div class="profile-group-head"><strong>Name anchors</strong><span>Identifies company, brand and English aliases</span></div><div class="settings-form-grid settings-form-grid-3"><label class="field"><span>Company full name</span><textarea class="textarea compact-textarea" data-code-profile="official_names" placeholder="One full company name per line"></textarea></label><label class="field"><span>Brand alias</span><textarea class="textarea compact-textarea" data-code-profile="brand_aliases" placeholder="One brand or former name per line"></textarea></label><label class="field"><span>English abbreviations</span><textarea class="textarea compact-textarea" data-code-profile="english_aliases" placeholder="One English name or abbreviation per line"></textarea></label></div></section>
+                <section class="profile-group" data-od-id="profile-technical-anchors"><div class="profile-group-head"><strong>Technical anchors</strong><span>Locates domains, subdomains and internal system characteristics</span></div><div class="settings-form-grid settings-form-grid-3"><label class="field"><span>Root domains</span><textarea class="textarea compact-textarea" data-code-profile="root_domains" placeholder="For example:example.com"></textarea></label><label class="field"><span>Trusted subdomain rules</span><textarea class="textarea compact-textarea" data-code-profile="trusted_subdomain_patterns" placeholder="For example:*.example.com"></textarea></label><label class="field"><span>Internal system keywords</span><textarea class="textarea compact-textarea" data-code-profile="internal_system_keywords" placeholder="One system or project identifier per line"></textarea></label></div></section>
+                <section class="profile-group" data-od-id="profile-false-positive-control"><div class="profile-group-head"><strong>False-positive control</strong><span>Excludes same-name entities and protects overly short search terms</span></div><div class="settings-form-grid settings-form-grid-2"><label class="field"><span>Excluded aliases</span><textarea class="textarea compact-textarea" data-code-profile="negative_aliases" placeholder="One alias to exclude per line"></textarea></label><label class="switch-control switch-control-card"><input type="checkbox" data-code-profile="short_alias_guard" checked><span class="switch-track" aria-hidden="true"></span><span><strong>Short-term protection</strong><small>Adds context checks for overly short aliases to reduce false positives from common words</small></span></label></div></section>
+              </div>
+            </section>
+
+            <section class="object-config-section document-monitoring-section" data-od-id="document-monitoring-membership">
+              <div class="object-section-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><path d="M16 16h4v4h-4z"/></svg></span><div><h2>Monitoring modules</h2><p>Only sets which monitoring modules the current target takes part in; detection strategies are maintained under “Sensitive Rules”</p></div></div></div>
+              <div class="module-membership-grid">
+                <label class="module-membership-item" data-document-module-toggle="netdisk" data-settings-module-card="netdisk" data-od-id="object-module-netdisk">
+                  <span><strong>Netdisk monitoring</strong><small>Searches public netdisk exposure using the current target profile</small></span>
+                  <span class="switch-control"><input type="checkbox" data-document-field="enabled" checked><span class="switch-track" aria-hidden="true"></span><span>Enable</span></span>
+                </label>
+                <label class="module-membership-item" data-document-module-toggle="library" data-settings-module-card="library" data-od-id="object-module-library">
+                  <span><strong>Document library monitoring</strong><small>Searches public document platforms using the current target profile</small></span>
+                  <span class="switch-control"><input type="checkbox" data-document-field="enabled" checked><span class="switch-track" aria-hidden="true"></span><span>Enable</span></span>
+                </label>
+              </div>
+            </section>
+
+            <section class="object-config-section document-term-section" data-od-id="document-profile-terms">
+              <div class="object-section-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 6h14M5 12h14M5 18h8"/><circle cx="18" cy="18" r="3"/></svg></span><div><h2>Profile expansion</h2><p>Expansion terms must also match the current company name or domain; saved together with the current target</p></div></div><button class="btn btn-secondary" type="button" data-document-term-add>Add term</button></div>
+              <div class="document-term-grid" role="table" aria-label="Target profile expansion terms">
+                <div class="document-term-head" role="row"><span>Term</span><span>Type</span><span>Status</span><span>Actions</span></div>
+                <div id="document-term-list"></div>
+              </div>
+              <div class="document-term-empty" data-document-term-empty>Base search terms are generated automatically from the company profile; add expansion terms as needed.</div>
+            </section>
+            </article>
+          </div>
+        </section>
+
+        <section class="section settings-panel-section" data-od-id="settings-rules" data-panel-group="settings" data-panel="rules" hidden>
+          <div class="settings-ops-stack">
+            <article class="settings-surface code-monitoring-surface" data-watchlist-scoped data-od-id="code-monitoring-config">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><path d="m16 16 4 4M20 16l-4 4"/></svg></span><div><h2>Code monitoring configuration of the current target</h2><p>Sensitive rules, scan strategies and additional search terms are saved separately per monitoring target</p></div></div><div class="settings-actions"><span class="scope-badge">Scope: current monitoring target — <strong data-bind="current-watchlist-scope">Not selected</strong></span><button class="btn btn-primary" data-code-action="watchlist-save">Save code configuration</button></div></header>
+              <div class="code-config-toolbar">
+                <label class="field"><span>Monitoring target</span><select class="select" id="code-term-watchlist"><option value="">Select a monitoring target</option></select></label>
+                <p>All of the following settings are saved with the current target; switching targets refreshes everything.</p>
+              </div>
+
+              <section class="code-config-section" data-od-id="code-sensitive-rules">
+                <header class="code-config-section-head"><div><h3>Code sensitive detection rules</h3><p>Identifies credentials, keys and internal addresses in GitHub, GitLab and Gitee code</p></div></header>
+                <div class="rule-toggle-grid">
+                  <label class="rule-toggle-item"><span class="rule-icon">AK</span><span><strong>API Key</strong><small>Third-party service access keys</small></span><input type="checkbox" data-code-rule="api_key" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">TK</span><span><strong>Token</strong><small>Access tokens and session credentials</small></span><input type="checkbox" data-code-rule="token" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">SK</span><span><strong>AK / SK</strong><small>Cloud resource access credential pairs</small></span><input type="checkbox" data-code-rule="ak_sk" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">DB</span><span><strong>Database connection string</strong><small>Database addresses and authentication parameters</small></span><input type="checkbox" data-code-rule="db_url" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">JW</span><span><strong>JWT Secret</strong><small>Token signing and verification keys</small></span><input type="checkbox" data-code-rule="jwt_secret" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">RD</span><span><strong>Redis URL</strong><small>Cache service connection information</small></span><input type="checkbox" data-code-rule="redis_url" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">PK</span><span><strong>Private key</strong><small>PEM, SSH and other private key content</small></span><input type="checkbox" data-code-rule="private_key" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">IN</span><span><strong>Intranet URL</strong><small>Internal addresses and management entry points</small></span><input type="checkbox" data-code-rule="internal_url" checked></label>
+                  <label class="rule-toggle-item"><span class="rule-icon">PW</span><span><strong>Account password</strong><small>Hard-coded usernames and passwords</small></span><input type="checkbox" data-code-rule="password" checked></label>
+                </div>
+              </section>
+
+              <section class="code-config-section" data-od-id="code-scan-policy">
+                <header class="code-config-section-head"><div><h3>Code scan strategy</h3><p>Configure monitoring platforms, file types and detail fetching</p></div></header>
+                <div class="scan-policy-grid">
+                  <div class="settings-option-group"><span>Monitoring platforms</span><div class="checkbox-row"><label><input type="checkbox" data-code-platform="github" checked> GitHub</label><label><input type="checkbox" data-code-platform="gitlab" checked> GitLab</label><label><input type="checkbox" data-code-platform="gitee" checked> Gitee</label></div></div>
+                  <label class="field"><span>High-risk file extensions</span><textarea class="textarea compact-textarea" id="code-file-extensions">env
+yaml
+yml
+json
+ini
+conf
+properties
+py
+js
+ts
+java</textarea></label>
+                  <label class="switch-control switch-control-card"><input type="checkbox" id="code-detail-fetch" checked><span class="switch-track" aria-hidden="true"></span><span><strong>Fetch details</strong><small>Reads the file context after a hit, used for sensitive type assessment</small></span></label>
+                </div>
+                <details class="admin-settings"><summary>Advanced administrator settings</summary><div class="settings-form-grid settings-form-grid-2"><label class="field"><span>Maximum search pages per term</span><input class="input num" id="code-search-page-limit" type="number" min="0" value="0"><small>0 means the server default limit is used</small></label><label class="field"><span>Maximum results per term</span><input class="input num" id="code-max-results" type="number" min="0" value="0"><small>0 means the server default limit is used</small></label></div></details>
+              </section>
+
+              <section class="code-config-section" data-od-id="code-search-terms">
+                <header class="code-config-section-head"><div><h3>Additional code search terms</h3><p>The company profile automatically generates search terms for company names, brands, English abbreviations, root domains and internal systems; only add project, product or special terms here</p></div><div class="settings-actions"><button class="btn btn-secondary" data-code-action="term-template">Download template</button><button class="btn btn-secondary" data-code-action="term-import">Import template</button><button class="btn btn-primary" data-code-action="term-add">Add additional term</button><input id="code-term-import" type="file" accept=".xlsx,.xls" hidden></div></header>
+                <div class="derived-term-strip"><span>Auto-generated from company profile <strong class="num" data-bind="derived-code-term-count">0</strong>  search terms</span><div data-derived-code-terms>Auto-generated terms appear after the monitoring target is saved.</div></div>
+                <div class="code-term-toolbar">
+                  <label class="field"><span>Term type</span><select class="select" data-filter-target="code-term-table" data-filter-key="type"><option value="">All types</option><option value="company_name">Company name</option><option value="domain">Domain</option><option value="project_name">Project name</option><option value="product_name">Product name</option><option value="custom">Custom</option></select></label>
+                  <label class="field"><span>Enabled state</span><select class="select" data-filter-target="code-term-table" data-filter-key="state"><option value="">All statuses</option><option value="enabled">Enabled</option><option value="disabled">Disabled</option></select></label>
+                  <label class="field code-term-search"><span>Search terms</span><input class="input" data-table-search="code-term-table" placeholder="Enter a search term"></label>
+                </div>
+                <div class="table-wrap settings-table-wrap"><table class="ds-table code-term-table" id="code-term-table" data-table><thead><tr><th>Search terms</th><th>Type</th><th>Status</th><th>Last modified</th><th>Actions</th></tr></thead><tbody id="code-term-list"></tbody></table></div>
+                <div class="settings-table-empty" data-table-empty="code-term-table">No additional code search terms yet; terms auto-generated from the company profile are shown above.</div>
+                <div class="term-import-summary" data-code-import-summary role="status" hidden></div>
+                <footer class="settings-surface-foot"><p>Excel Imports are deduplicated automatically, with new, skipped and malformed rows reported separately; save the code configuration after making changes.</p></footer>
+              </section>
+            </article>
+
+            <article class="settings-surface monitoring-keyword-surface" data-watchlist-scoped data-od-id="monitoring-keyword-rules">
+              <header class="settings-surface-head">
+                <div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 6h14M5 12h9M5 18h6"/><circle cx="18" cy="17" r="3"/><path d="m20.2 19.2 1.8 1.8"/></svg></span><div><h2>Intelligence monitoring keywords of the current target</h2><p>Only used for ransomware, data leak and vulnerability alert hits of the current monitoring target</p></div></div>
+                <div class="settings-actions"><button class="btn btn-secondary" data-code-action="monitoring-keyword-refresh">Refresh</button><button class="btn btn-secondary" data-code-action="monitoring-keyword-add">Add term</button><button class="btn btn-primary" data-code-action="monitoring-keyword-save">Save rules</button></div>
+              </header>
+              <div class="monitoring-keyword-summary">
+                <div><span>Total rules</span><strong class="num" data-bind="monitoring-keyword-total">0</strong></div>
+                <div><span>Enabled</span><strong class="num" data-bind="monitoring-keyword-enabled">0</strong></div>
+                <p>Scope: current monitoring target — <strong data-bind="current-watchlist-scope">Not selected</strong>; code leak pushes are still determined by the company profile, additional code search terms and main-list rules.</p>
+              </div>
+              <div class="table-wrap settings-table-wrap"><table class="ds-table monitoring-keyword-table"><thead><tr><th>Keyword</th><th>Category</th><th>Weight</th><th>Match mode</th><th>Status</th><th>Actions</th></tr></thead><tbody data-monitoring-keyword-list></tbody></table></div>
+              <div class="settings-table-empty" data-monitoring-keyword-empty>Loading intelligence monitoring keywords…</div>
+              <footer class="settings-surface-foot"><p>Rules apply to newly ingested ransomware, data leak and vulnerability events immediately after saving; historical events are not resent.</p></footer>
+            </article>
+
+            <article class="settings-surface exposure-policy-surface" data-od-id="document-exposure-rules">
+              <header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/><path d="M16 16h4v4h-4z"/></svg></span><div><h2>Exposure detection strategy</h2><p>File scope, candidate count and detail fetching are saved with the selected monitoring target</p></div></div><button class="btn btn-primary" data-code-action="watchlist-save">Save strategy</button></header>
+              <div class="exposure-policy-toolbar">
+                <label class="field"><span>Monitoring target</span><select class="select" id="document-policy-watchlist"><option value="">Select a monitoring target</option></select></label>
+                <p>Module enable/disable is still set under “Monitoring Targets”; only detection methods are maintained here.</p>
+              </div>
+              <div class="module-policy-stack">
+                <article class="module-policy-card" data-document-policy="netdisk" data-settings-module-card="netdisk" data-od-id="rules-policy-netdisk">
+                  <div class="module-policy-head"><div><span class="module-kicker">NETDISK</span><strong>Netdisk detection strategy</strong><small>Limits the file types and evidence depth to verify</small></div></div>
+                  <div class="module-policy-controls">
+                    <fieldset class="file-type-field"><legend>File type</legend><div class="file-type-checks"><label><input type="checkbox" value="pdf" data-document-file-type checked>PDF</label><label><input type="checkbox" value="docx" data-document-file-type checked>Word</label><label><input type="checkbox" value="xlsx" data-document-file-type checked>Excel</label><label><input type="checkbox" value="pptx" data-document-file-type>Presentations</label><label><input type="checkbox" value="zip" data-document-file-type checked>Archives</label></div></fieldset>
+                    <label class="switch-control switch-control-card compact-switch-card"><input type="checkbox" data-document-field="detail_fetch" checked><span class="switch-track" aria-hidden="true"></span><span><strong>Fetch details</strong><small>Adds the file list and source information after a hit</small></span></label>
+                  </div>
+                </article>
+                <article class="module-policy-card" data-document-policy="library" data-settings-module-card="library" data-od-id="rules-policy-library">
+                  <div class="module-policy-head"><div><span class="module-kicker">DOCUMENT LIBRARY</span><strong>Library detection strategy</strong><small>Limits the candidate scope, document types and evidence depth</small></div></div>
+                  <div class="module-policy-controls library-policy-controls">
+                    <fieldset class="file-type-field"><legend>Document type</legend><div class="file-type-checks"><label><input type="checkbox" value="pdf" data-document-file-type checked>PDF</label><label><input type="checkbox" value="docx" data-document-file-type checked>Word</label><label><input type="checkbox" value="pptx" data-document-file-type checked>Presentations</label><label><input type="checkbox" value="txt" data-document-file-type>Plain text</label></div></fieldset>
+                    <label class="field compact-number-field"><span>Candidate limit per term</span><input class="input num" type="number" min="1" max="200" value="30" data-document-field="candidate_limit"></label>
+                    <label class="switch-control switch-control-card compact-switch-card"><input type="checkbox" data-document-field="detail_fetch" checked><span class="switch-track" aria-hidden="true"></span><span><strong>Fetch details</strong><small>Adds author, page count and preview evidence</small></span></label>
+                  </div>
+                </article>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section settings-panel-section" data-od-id="settings-notifications" data-panel-group="settings" data-panel="notifications" hidden>
+          <div class="settings-ops-stack">
+            <article class="settings-surface notification-object-scope" data-od-id="notification-object-scope"><header class="settings-surface-head"><div class="settings-heading"><span class="settings-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="m10.5 9.5 3 5"/></svg></span><div><h2>Monitoring target notification routing</h2><p>Each target stores its own keywords, WeCom and DingTalk configuration, and never sends to other targets’ bots</p></div></div><label class="field notification-object-select"><span>Current monitoring target</span><select class="select" id="notification-watchlist-select"><option value="">Select a monitoring target</option></select></label></header></article>
+
+            <article class="settings-ops-section settings-bot" data-watchlist-scoped data-od-id="settings-bot-notification">
+              <header class="settings-ops-head"><div><span>Notification Channels</span><h2>WeCom Bot</h2></div><span class="badge" data-bind="bot-status">To be configured</span></header>
+              <div class="settings-bot-channel">
+                <div class="bot-status-strip"><span>Registered sessions<strong class="num" data-bind="bot-target-count">0</strong></span><span>Secret<strong data-bind="bot-secret-status">Not configured</strong></span></div>
+                <div class="settings-bot-form"><label class="field"><span>Bot ID</span><input class="input" id="bot-id" placeholder="Enter WeCom Bot ID" autocomplete="off"></label><label class="field"><span>Secret</span><input class="input" id="bot-secret" type="password" placeholder="Enter Bot Secret" autocomplete="new-password"></label></div>
+                <label class="switch-control"><input type="checkbox" id="watchlist-wechat-enabled"><span class="switch-track" aria-hidden="true"></span><span>Enable for the current target only</span></label><div class="settings-bot-actions"><button class="btn btn-secondary" data-collector-action="bot-save">Save configuration</button><button class="btn btn-primary" data-collector-action="bot-test">Send test</button><button class="btn btn-danger" data-collector-action="bot-delete">Delete configuration</button></div>
+              </div>
+              <p>Scope: current monitoring target — <strong data-bind="current-watchlist-scope">Not selected</strong>; only pushes this target’s events and new code leak main-list hits.</p>
+            </article>
+
+            <article class="settings-ops-section settings-bot" data-watchlist-scoped data-od-id="settings-dingtalk-notification">
+              <header class="settings-ops-head"><div><span>Notification Channels</span><h2>DingTalk custom bot</h2></div><span class="badge" data-bind="dingtalk-status">To be configured</span></header>
+              <div class="settings-bot-channel">
+                <div class="bot-status-strip"><span>Number of bots<strong class="num" data-bind="dingtalk-endpoint-count">0</strong></span><span>Signing bots<strong class="num" data-bind="dingtalk-secret-count">0</strong></span></div>
+                <div class="settings-bot-form settings-dingtalk-form"><label class="field"><span>Bot name</span><input class="input" id="dingtalk-name" placeholder="For example: Security operations group" autocomplete="off"></label><label class="field"><span>Webhook / access_token</span><input class="input" id="dingtalk-webhook" type="password" placeholder="Enter a new DingTalk bot webhook or access_token" autocomplete="new-password"></label><label class="field"><span>Signing Secret</span><input class="input" id="dingtalk-secret" type="password" placeholder="Fill in when signing is enabled Secret" autocomplete="new-password"></label></div>
+                <div class="settings-bot-actions settings-dingtalk-actions"><label class="switch-control"><input type="checkbox" id="watchlist-dingtalk-enabled"><span class="switch-track" aria-hidden="true"></span><span>Enable for the current target</span></label><button class="btn btn-secondary" data-collector-action="dingtalk-toggle-save">Save switch</button><button class="btn btn-primary" data-collector-action="dingtalk-save">Add bot</button><button class="btn btn-ghost" data-collector-action="dingtalk-test">Test all</button><button class="btn btn-danger" data-collector-action="dingtalk-delete">Clear all</button></div>
+              </div>
+              <div class="dingtalk-endpoint-list" id="dingtalk-endpoint-list"><p class="dingtalk-endpoint-empty">No DingTalk bot configured for the current target yet</p></div>
+              <p>Scope: current monitoring target — <strong data-bind="current-watchlist-scope">Not selected</strong>; messages are pushed to all configured bots of this target, and a failure of one bot does not affect the others.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div>
+  <script src="assets/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

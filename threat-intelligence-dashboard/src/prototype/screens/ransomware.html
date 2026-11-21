@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ransomware Operation Tracking · Abyssal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="page-ransomware">
+<div class="app-shell sidebar-collapsed">
+    <aside class="app-sidebar" data-od-id="ransomware-sidebar">
+      <a class="brand" href="dashboard.html"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none"><path d="M24 3 40 9v12c0 11-6.7 18.5-16 23-9.3-4.5-16-12-16-23V9L24 3Z"/><circle cx="24" cy="22" r="8"/><path d="M14 22h20M24 12v20m-6-4 12-12"/></svg></span><span class="brand-copy"><strong>Abyssal</strong><span>ABYSSAL INTELLIGENCE</span></span></a>
+      <nav class="sidebar-nav" aria-label="Main navigation"></nav><div class="sidebar-footer"></div>
+    </aside>
+    <button class="sidebar-backdrop" data-sidebar-toggle aria-label="Close navigation"></button>
+    <div class="app-stage">
+      <header class="app-header" data-od-id="ransomware-header">
+        <button class="btn btn-secondary icon-btn menu-button" data-sidebar-toggle aria-label="Open navigation">☰</button>
+        <div class="header-actions"><span class="app-version" data-od-id="ransomware-version">Version <strong>v20260901.1.0</strong></span><span class="avatar" data-od-id="ransomware-account">Personal</span></div>
+      </header>
+
+      <main class="app-main" id="content" data-od-id="ransomware-main">
+        <section class="ransom-workspace" data-od-id="ransomware-actor-intelligence-section">
+          <aside class="ransom-side-stack" data-od-id="ransomware-actor-intelligence">
+            <article class="card actor-focus dense-panel">
+              <div class="panel-header"><h2>Group activity</h2><span class="meta">Last 7 days</span></div>
+              <div class="actor-rank"><b>01</b><div><strong>LockBit</strong><span>12  · mostly manufacturing</span></div><i style="--score:92%"></i></div>
+              <div class="actor-rank"><b>02</b><div><strong>Black Basta</strong><span>9  · healthcare rising</span></div><i style="--score:74%"></i></div>
+              <div class="actor-rank"><b>03</b><div><strong>Akira</strong><span>7  · concentrated on VPN entry points</span></div><i style="--score:61%"></i></div>
+              <div class="actor-rank"><b>04</b><div><strong>RansomHub</strong><span>6  · government contractors</span></div><i style="--score:50%"></i></div>
+            </article>
+            <article class="card action-feed dense-panel">
+              <div class="panel-header"><h2>Live updates</h2><span class="pulse-label">LIVE</span></div>
+              <ol class="timeline-feed">
+                <li><time>09:12</time><div><strong>LockBit Updated victim organization page</strong><span>Added financial sample directory</span></div></li>
+                <li><time>08:44</time><div><strong>Black Basta Adjusted countdown</strong><span>Publication time moved 6 hours earlier</span></div></li>
+                <li><time>08:03</time><div><strong>Akira Added UK victim organization</strong><span>Matched to an existing entity</span></div></li>
+                <li><time>07:35</time><div><strong>Play Published data samples</strong><span>Moved to leak verification</span></div></li>
+              </ol>
+            </article>
+          </aside>
+        </section>
+
+        <section data-od-id="ransomware-victim-list">
+          <article class="card data-table-panel dense-panel">
+            <div class="panel-header"><div><h2>Victim organization list <span class="heading-count" data-table-count="ransomware-table">5</span></h2></div><button class="btn btn-secondary" data-toast="Current results exported">Export</button></div>
+            <div class="toolbar"><div class="tabs compact-tabs" data-target="ransomware-table"><button class="tab active" data-tab="all">All</button><button class="tab" data-tab="disclosed">Newly disclosed</button><button class="tab" data-tab="countdown">Countdown</button><button class="tab" data-tab="published">Published</button></div><select class="select" data-filter-target="ransomware-table" data-filter-key="industry"><option value="">All industries</option><option value="Manufacturing">Manufacturing</option><option value="Healthcare">Healthcare</option><option value="Professional services">Professional services</option></select><div class="search-field"><input class="input" data-table-search="ransomware-table" placeholder="Search groups, organizations or regions"></div></div>
+            <div class="table-wrap"><table class="ds-table" id="ransomware-table" data-table><thead><tr><th>Discovered at</th><th>Victim organization / Event</th><th>Group</th><th>Stage</th><th>Industry</th><th>Region</th><th>Handling</th></tr></thead><tbody>
+              <tr data-category="published" data-industry="Manufacturing"><td class="num">03-10 09:12</td><td class="table-title">North American manufacturer<span>Financial and engineering documents published</span></td><td>LockBit</td><td><span class="badge badge-critical">Data publication</span></td><td>Manufacturing</td><td>United States / Canada</td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-014">View</a></td></tr>
+              <tr data-category="countdown" data-industry="Healthcare"><td class="num">03-10 08:44</td><td class="table-title">European healthcare group<span>Negotiation countdown moved earlier</span></td><td>Black Basta</td><td><span class="badge badge-high">18  hours</span></td><td>Healthcare</td><td>Germany / Poland</td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-012">View</a></td></tr>
+              <tr data-category="disclosed" data-industry="Professional services"><td class="num">03-10 08:03</td><td class="table-title">UK professional services firm<span>New victim organization disclosed</span></td><td>Akira</td><td><span class="badge">Newly disclosed</span></td><td>Professional services</td><td>United Kingdom</td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-010">View</a></td></tr>
+              <tr data-category="published" data-industry="Manufacturing"><td class="num">03-10 07:35</td><td class="table-title">Southeast Asian manufacturer<span>Sample directory obtained</span></td><td>Play</td><td><span class="badge badge-critical">Data publication</span></td><td>Manufacturing</td><td>Vietnam / Thailand</td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-009">View</a></td></tr>
+              <tr data-category="disclosed" data-industry="Professional services"><td class="num">03-10 06:58</td><td class="table-title">US government contractor<span>Old access chain exploited</span></td><td>RansomHub</td><td><span class="badge">Initial intrusion</span></td><td>Professional services</td><td>United States</td><td><a class="btn btn-ghost" href="ransomware-detail.html?id=RAN-2026-0310-006">View</a></td></tr>
+            </tbody></table></div><div class="empty-state" data-table-empty="ransomware-table">No matching events</div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </div>
+  <div class="toast" role="status"></div><script src="app.js"></script>
+</body>
+</html>
