@@ -2381,7 +2381,7 @@ export function initializePrototype() {
           [`${item.running_jobs || 0} / ${item.enqueued_jobs || 0}`, ''],
           [item.failed_jobs_24h || 0, ''],
           [`${item.consecutive_failures || 0}/${item.failure_threshold || 3}`, ''],
-          [item.circuit_breaker_open ? 'Cooling down' : 'Close', ''],
+          [item.circuit_breaker_open ? 'Cooling down' : 'Closed', ''],
           [formatDate(item.last_success_at), '']
         ]
         const labels = ['Site', 'Status', 'Running / Queued', '24h Failed', 'Consecutive failures', 'Circuit breaker', 'Last success']

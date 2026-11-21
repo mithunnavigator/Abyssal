@@ -5138,3 +5138,16 @@ body {
   .monitor-donut-card .monitor-donut-layout { height: auto; grid-template-columns: 1fr; }
   .monitor-donut-card .monitor-donut-legend { width: 100%; }
 }
+
+/* Abyssal English layout adjustments */
+.code-data-table th, .suppressed-code-table th { white-space: normal; letter-spacing: .02em; line-height: 1.35; vertical-align: bottom; }
+.situation-events-table td:nth-child(5) > span { display: block; margin-top: 2px; color: var(--muted); font-size: .92em; }
+.monitoring-data-table th { white-space: normal; letter-spacing: .02em; line-height: 1.35; vertical-align: bottom; }
+.library-data-table .table-title { min-width: 220px; }
+.library-data-table td .badge, .monitoring-data-table td .badge, .monitoring-data-table .result-status { white-space: normal; }
+.library-data-table th:nth-child(1) { width: 21%; }
+.library-data-table th:nth-child(6) { width: 9%; }
+.library-data-table th:nth-child(9) { width: 14%; }
+.library-data-table th:nth-child(10) { width: 7%; }
+.collector-health-table th { white-space: normal; letter-spacing: .02em; line-height: 1.35; vertical-align: bottom; }
+.collector-health-table .status-dot { white-space: normal; }

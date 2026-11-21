@@ -914,7 +914,7 @@ async function hydrateDashboard(root, state) {
     setCell(cells[3], item.region || item.country)
     setCell(cells[4], item.industry, item.vendor || item.product || item.victim)
     setBadgeCell(cells[5], severityLabel(severityOf(item)), severityOf(item))
-    setCell(cells[6], item.monitoringPriority || (item.isExploited ? 'Exploited' : '—'))
+    setCell(cells[6], item.monitoringPriority ? `${severityLabel(String(item.monitoringPriority).toLowerCase())} priority` : (item.isExploited ? 'Exploited' : '—'))
     setActionCell(cells[7], 'View', detailHref(item))
   })
 
