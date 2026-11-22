@@ -2,7 +2,7 @@
 
 # Abyssal
 
-[![Latest release](https://img.shields.io/github/v/release/mithunnavigator/Abyssal?label=latest%20release&color=d32f2f)](https://github.com/mithunnavigator/Abyssal/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/mithunnavigator/Abyssal?label=latest%20release&color=d32f2f)](https://github.com/mithunnavigator/Abyssal/releases/latest) [![License: MIT](https://img.shields.io/github/license/mithunnavigator/Abyssal?color=1565c0)](LICENSE)
 
 Abyssal centrally monitors leads related to the dark web, ransomware, and code and file exposure, and supports intelligence search, evidence verification and enterprise risk notification.
 
